@@ -20,11 +20,15 @@ public class XML {
         return new XML(document);
     }
 
+    public static XML newDocument() {
+        throw new UnsupportedOperationException("Not yet implemented!");
+    }
+
     public String getValue(String xpathExpr) {
         try {
             return (String) xPath.evaluate(xpathExpr, document, XPathConstants.STRING);
         } catch (XPathExpressionException e) {
-            throw new XPathExpressionError(e);
+            throw new XPathExpressionError(String.format("Error evaluating xpath \"%s\"", xpathExpr), e);
         }
     }
 }
