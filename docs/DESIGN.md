@@ -156,6 +156,18 @@ L'API privilegia nomi brevi e leggibili: `sel`, `attr`, `text`, `before`, `after
 
 **Alternativa scartata:** Mantenere `text()` ricorsivo e aggiungere `directText()`. Scartata perché il caso d'uso diretto è più frequente e la semantica ricorsiva è sorprendente in scrittura (distrugge figli).
 
+### `content(XML)` importa il root, `content(String)` i figli del wrapper
+
+**Decisione:** `content(XML)` importa il root element del frammento come singolo figlio. `content(String)` avvolge la stringa in un wrapper sintetico `<_>...</_>`, parsa, e importa i figli del wrapper (supportando mixed content senza root singolo).
+
+**Motivazione:** Le due varianti coprono casi d'uso diversi. `content(XML)` è per quando si ha già un `XML` parsato e si vuole inserire il suo root element. `content(String)` è per sostituire il contenuto con mixed content arbitrario (es. `<b>bold</b> text`) che non ha un singolo root. Il wrapper sintetico è trasparente all'utente.
+
+### `cdata(String)` — solo in scrittura
+
+**Decisione:** `cdata(String)` crea un CDATA_SECTION_NODE. Non esiste `cdata()` in lettura — `text()` già legge sia TEXT che CDATA.
+
+**Motivazione:** La distinzione TEXT vs CDATA è rilevante solo in serializzazione (il contenuto è identico). Un metodo `cdata()` in lettura sarebbe ridondante con `text()`. L'utente sceglie CDATA in scrittura quando il contenuto contiene caratteri speciali XML (HTML, script, etc.) che vuole preservare senza entity encoding.
+
 ### Thread safety: nessuna garanzia
 
 **Decisione:** Nessun tipo della libreria è thread-safe.

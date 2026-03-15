@@ -96,6 +96,50 @@ public class Sel implements Iterable<Node> {
         return this;
     }
 
+    public Sel cdata(String value) {
+        for (org.w3c.dom.Node n : nodes) {
+            writeDirectCdata(n, value);
+        }
+        return this;
+    }
+
+    public Sel content(XML fragment) {
+        for (org.w3c.dom.Node n : nodes) {
+            removeAllChildren(n);
+            org.w3c.dom.Document doc = ownerDoc(n);
+            org.w3c.dom.Node imported = doc.importNode(fragment.document().getDocumentElement(), true);
+            n.appendChild(imported);
+        }
+        return this;
+    }
+
+    public Sel content(String xmlContent) {
+        if (xmlContent.isEmpty()) {
+            for (org.w3c.dom.Node n : nodes) {
+                removeAllChildren(n);
+            }
+            return this;
+        }
+        XML wrapper = XML.parse("<_>" + xmlContent + "</_>");
+        org.w3c.dom.Node wrapperRoot = wrapper.document().getDocumentElement();
+        for (org.w3c.dom.Node n : nodes) {
+            removeAllChildren(n);
+            org.w3c.dom.Document doc = ownerDoc(n);
+            org.w3c.dom.NodeList wrapperChildren = wrapperRoot.getChildNodes();
+            for (int i = 0; i < wrapperChildren.getLength(); i++) {
+                org.w3c.dom.Node imported = doc.importNode(wrapperChildren.item(i), true);
+                n.appendChild(imported);
+            }
+        }
+        return this;
+    }
+
+    private static void removeAllChildren(org.w3c.dom.Node n) {
+        while (n.hasChildNodes()) {
+            n.removeChild(n.getFirstChild());
+        }
+    }
+
     public Sel normalizeText() {
         for (org.w3c.dom.Node n : nodes) {
             normalizeTextNode(n);
@@ -131,6 +175,19 @@ public class Sel implements Iterable<Node> {
 
     static void writeDirectText(org.w3c.dom.Node n, String value) {
         normalizeTextNode(n);
+        removeDirectTextNodes(n);
+        org.w3c.dom.Document doc = ownerDoc(n);
+        n.insertBefore(doc.createTextNode(value), n.getFirstChild());
+    }
+
+    static void writeDirectCdata(org.w3c.dom.Node n, String value) {
+        normalizeTextNode(n);
+        removeDirectTextNodes(n);
+        org.w3c.dom.Document doc = ownerDoc(n);
+        n.insertBefore(doc.createCDATASection(value), n.getFirstChild());
+    }
+
+    private static void removeDirectTextNodes(org.w3c.dom.Node n) {
         List<org.w3c.dom.Node> toRemove = new ArrayList<>();
         org.w3c.dom.NodeList children = n.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
@@ -143,8 +200,6 @@ public class Sel implements Iterable<Node> {
         for (org.w3c.dom.Node r : toRemove) {
             n.removeChild(r);
         }
-        org.w3c.dom.Document doc = ownerDoc(n);
-        n.insertBefore(doc.createTextNode(value), n.getFirstChild());
     }
 
     static void normalizeTextNode(org.w3c.dom.Node n) {

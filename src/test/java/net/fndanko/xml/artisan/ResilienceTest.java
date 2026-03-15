@@ -23,6 +23,9 @@ class ResilienceTest {
             empty.deepText();
             empty.normalizeText();
             empty.coalesceText();
+            empty.cdata("v");
+            empty.content(XML.parse("<x/>"));
+            empty.content("<x/>");
             empty.remove();
             empty.append("tag");
             empty.prepend("tag");
@@ -52,6 +55,7 @@ class ResilienceTest {
                 xml.sel("//nothing")
                         .attr("a", "1")
                         .text("x")
+                        .cdata("y")
                         .normalizeText()
                         .coalesceText()
                         .append("child")
@@ -115,6 +119,9 @@ class ResilienceTest {
             empty.deepText();
             empty.normalizeText();
             empty.coalesceText();
+            empty.cdata("v");
+            empty.content(XML.parse("<x/>"));
+            empty.content("<x/>");
             empty.remove();
             empty.append("tag");
             empty.prepend("tag");
@@ -356,6 +363,52 @@ class ResilienceTest {
 
         // Assert
         assertNull(result);
+    }
+
+    // --- Empty Sel/Node: cdata ---
+
+    @Test
+    void emptySel_cdata_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        Sel empty = xml.sel("//nonexistent");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.cdata("value"));
+        assertTrue(empty.empty());
+    }
+
+    @Test
+    void emptyNode_cdata_noOp() {
+        // Arrange
+        Node empty = XML.parse("<root/>").sel("//x").first();
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.cdata("value"));
+    }
+
+    // --- Empty Sel/Node: content ---
+
+    @Test
+    void emptySel_content_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        Sel empty = xml.sel("//nonexistent");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.content(XML.parse("<span/>")));
+        assertDoesNotThrow(() -> empty.content("<span/>"));
+        assertTrue(empty.empty());
+    }
+
+    @Test
+    void emptyNode_content_noOp() {
+        // Arrange
+        Node empty = XML.parse("<root/>").sel("//x").first();
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.content(XML.parse("<span/>")));
+        assertDoesNotThrow(() -> empty.content("<span/>"));
     }
 
     // --- Chaining misto con selezioni e nodi vuoti ---

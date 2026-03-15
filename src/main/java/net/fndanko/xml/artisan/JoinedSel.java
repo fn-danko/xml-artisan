@@ -42,6 +42,13 @@ public class JoinedSel<T> extends Sel {
         return this;
     }
 
+    public JoinedSel<T> cdataWith(Function<T, String> fn) {
+        for (org.w3c.dom.Node n : nodes) {
+            Sel.writeDirectCdata(n, fn.apply(datumMap.get(n)));
+        }
+        return this;
+    }
+
     public JoinedSel<T> eachWith(BiConsumer<Node, T> fn) {
         for (org.w3c.dom.Node n : nodes) {
             T datum = datumMap.get(n);

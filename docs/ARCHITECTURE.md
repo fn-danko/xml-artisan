@@ -138,6 +138,9 @@ Sel
  ├── .attr(name, Function<String,String>) → Sel     // fn(valoreCorrente) → nuovo
  ├── .text(value) → Sel                             // normalizeText + testo diretto, preserva figli
  ├── .text(Function<String,String>) → Sel            // text() + fn + text(String)
+ ├── .cdata(value) → Sel                             // come text(value) ma CDATA_SECTION_NODE
+ ├── .content(XML) → Sel                             // rimpiazza tutti i figli con root del frammento
+ ├── .content(String) → Sel                          // rimpiazza tutti i figli con mixed content parsato
  ├── .normalizeText() → Sel                          // unifica TEXT/CDATA diretti in uno, primo figlio
  ├── .coalesceText() → Sel                           // distruttivo: getTextContent → rimuove tutto → testo singolo
  ├── .remove() → Sel                                // ritorna selezione padre
@@ -271,6 +274,7 @@ JoinedSel<T> extends Sel
  ├── // Operazioni con accesso al dato
  ├── .attrWith(String name, BiFunction<String, T, String>) → JoinedSel<T>
  ├── .textWith(Function<T, String>) → JoinedSel<T>
+ ├── .cdataWith(Function<T, String>) → JoinedSel<T>
  ├── .eachWith(BiConsumer<Node, T>) → JoinedSel<T>
  │
  ├── // Transizioni (perdono il binding)
@@ -404,6 +408,9 @@ Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel 
 | `.deepText()` su primo nodo, senza text content | `""` |
 | `.normalizeText()` su `Sel` vuoto | No-op |
 | `.coalesceText()` su `Sel` vuoto | No-op |
+| `.cdata(value)` su `Sel` vuoto | No-op |
+| `.content(XML)` su `Sel` vuoto | No-op |
+| `.content(String)` su `Sel` vuoto | No-op |
 
 #### `Node` vuoto (null object)
 
@@ -416,6 +423,9 @@ Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel 
 | `.text(value)` | No-op, restituisce lo stesso `Node` vuoto |
 | `.normalizeText()` | No-op |
 | `.coalesceText()` | No-op |
+| `.cdata(value)` | No-op |
+| `.content(XML)` | No-op |
+| `.content(String)` | No-op |
 | `.name()` | `""` |
 | `.children()` | `Sel` vuoto |
 | `.parent()` | `Node` vuoto |

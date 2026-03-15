@@ -303,6 +303,12 @@ Sel vuoto: .coalesceText() → no-op
 Node vuoto: .deepText() → ""
 Node vuoto: .normalizeText() → no-op
 Node vuoto: .coalesceText() → no-op
+Sel vuoto: .cdata() → no-op
+Node vuoto: .cdata() → no-op
+Sel vuoto: .content(XML) → no-op
+Sel vuoto: .content(String) → no-op
+Node vuoto: .content(XML) → no-op
+Node vuoto: .content(String) → no-op
 .data() con lista vuota → tutti nodi in exit
 .data() su Sel vuota → tutti dati in enter
 ```
@@ -349,6 +355,26 @@ coalesceText poi text → legge stringa singola
 XML.normalizeText: ricorsivo su tutti i livelli
 XML.normalizeText: preserva struttura
 XML.normalizeText: chainable (ritorna XML)
+cdata: valore semplice crea CDATA_SECTION_NODE
+cdata: preserva elementi figli
+cdata: rimpiazza TEXT_NODE esistente con CDATA
+cdata: rimpiazza CDATA esistente con nuovo CDATA
+cdata: applicato a tutti i nodi
+cdata: chainable
+cdata: selezione vuota → no-op
+cdata: text() legge contenuto CDATA
+cdata: caratteri speciali preservati
+content(XML): rimpiazza tutti i figli
+content(XML): preserva attributi del nodo
+content(XML): preserva posizione del nodo
+content(XML): importa root element del frammento
+content(XML): applicato a tutti i nodi
+content(XML): chainable
+content(XML): selezione vuota → no-op
+content(String): parsa e rimpiazza
+content(String): mixed content supportato
+content(String): singolo elemento
+content(String): stringa vuota rimuove tutti i figli
 ```
 
 ### 15. `DataBindingTest` — Data binding base

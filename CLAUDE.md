@@ -68,12 +68,12 @@ OutputOptions    → Immutable serialization config (builder pattern)
   11. `SerializationTest` — toString, toFragment, writeTo, OutputOptions
   12. `XPathTest` — contextual XPath, rewrite, namespaces
   13. `ResilienceTest` — empty Sel/Node, chaining safety
-  14. `TextNodeTest` — normalizeText, text (direct semantics), deepText, coalesceText
+  14. `TextNodeTest` — normalizeText, text (direct semantics), deepText, coalesceText, cdata, content
 - **5 test suites (v1.1 data binding):**
   15. `DataBindingTest` — positional and key-based matching, enter/update/exit classification
   16. `JoinShorthandTest` — `.join("tag")` shorthand, defaults behavior
   17. `JoinConfigTest` — builder, defaults, explicit null overrides, handler order, custom handlers
-  18. `JoinedSelTest` — `attrWith`, `textWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
+  18. `JoinedSelTest` — `attrWith`, `textWith`, `cdataWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
   19. `JoinAdvancedTest` — multi-parent grouping, insertion order, repeated joins, mixed types, full lifecycle
 
 ## Data Binding (v1.1)
@@ -86,7 +86,7 @@ D3.js-style enter/update/exit join lifecycle via `Sel.data()` → `BoundSel.join
 - **Handler order:** exit → update → enter
 - **Handler resolution:** `JoinConfig.defaults("tag")` sets enter=append, update=identity, exit=remove; individual `.enter()`/`.update()`/`.exit()` override selectively; explicit `null` means "do nothing" (distinct from "not set")
 - **Merge ordering:** index-based `slots[]` array ensures merged list follows data order; `order()` reorders DOM to match
-- **Post-join ops:** `attrWith`, `textWith`, `eachWith` apply data-aware transforms to merged (enter+update) nodes
+- **Post-join ops:** `attrWith`, `textWith`, `cdataWith`, `eachWith` apply data-aware transforms to merged (enter+update) nodes
 
 ## Package
 

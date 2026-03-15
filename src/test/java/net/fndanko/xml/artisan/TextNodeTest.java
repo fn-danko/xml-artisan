@@ -541,6 +541,317 @@ class TextNodeTest {
         assertSame(xml, result);
     }
 
+    // --- cdata() write ---
+
+    @Test
+    void cdata_simpleValue_createsCdataSection() {
+        // Arrange
+        XML xml = XML.parse("<root><p/></root>");
+
+        // Act
+        xml.sel("//p").cdata("hello");
+
+        // Assert
+        org.w3c.dom.Node p = xml.sel("//p").first().unwrap();
+        org.w3c.dom.Node first = p.getFirstChild();
+        assertEquals(org.w3c.dom.Node.CDATA_SECTION_NODE, first.getNodeType());
+        assertEquals("hello", first.getNodeValue());
+    }
+
+    @Test
+    void cdata_preservesChildElements() {
+        // Arrange
+        XML xml = XML.parse("<root><p><b>child</b></p></root>");
+
+        // Act
+        xml.sel("//p").cdata("new");
+
+        // Assert
+        assertEquals(1, xml.sel("//b").size());
+        assertEquals("child", xml.sel("//b").text());
+    }
+
+    @Test
+    void cdata_replaceExistingText() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old text</p></root>");
+
+        // Act
+        xml.sel("//p").cdata("new cdata");
+
+        // Assert
+        org.w3c.dom.Node p = xml.sel("//p").first().unwrap();
+        org.w3c.dom.Node first = p.getFirstChild();
+        assertEquals(org.w3c.dom.Node.CDATA_SECTION_NODE, first.getNodeType());
+        assertEquals("new cdata", first.getNodeValue());
+    }
+
+    @Test
+    void cdata_replaceExistingCdata() {
+        // Arrange
+        XML xml = XML.parse("<root><p/></root>");
+        xml.sel("//p").cdata("old");
+
+        // Act
+        xml.sel("//p").cdata("new");
+
+        // Assert
+        org.w3c.dom.Node p = xml.sel("//p").first().unwrap();
+        org.w3c.dom.Node first = p.getFirstChild();
+        assertEquals(org.w3c.dom.Node.CDATA_SECTION_NODE, first.getNodeType());
+        assertEquals("new", first.getNodeValue());
+    }
+
+    @Test
+    void cdata_appliedToAllNodes() {
+        // Arrange
+        XML xml = XML.parse("<root><p>a</p><p>b</p></root>");
+
+        // Act
+        xml.sel("//p").cdata("same");
+
+        // Assert
+        for (Node node : xml.sel("//p")) {
+            org.w3c.dom.Node first = node.unwrap().getFirstChild();
+            assertEquals(org.w3c.dom.Node.CDATA_SECTION_NODE, first.getNodeType());
+            assertEquals("same", first.getNodeValue());
+        }
+    }
+
+    @Test
+    void cdata_chainable() {
+        // Arrange
+        XML xml = XML.parse("<root><p/></root>");
+        Sel sel = xml.sel("//p");
+
+        // Act
+        Sel result = sel.cdata("x");
+
+        // Assert
+        assertSame(sel, result);
+    }
+
+    @Test
+    void cdata_emptySelection_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> xml.sel("//nonexistent").cdata("value"));
+    }
+
+    @Test
+    void cdata_thenText_readsCdataContent() {
+        // Arrange
+        XML xml = XML.parse("<root><p/></root>");
+
+        // Act
+        xml.sel("//p").cdata("cdata content");
+
+        // Assert
+        assertEquals("cdata content", xml.sel("//p").text());
+    }
+
+    @Test
+    void cdata_withSpecialChars_preserved() {
+        // Arrange
+        XML xml = XML.parse("<root><p/></root>");
+        String special = "<script>alert('xss')</script> & ]]";
+
+        // Act
+        xml.sel("//p").cdata(special);
+
+        // Assert
+        assertEquals(special, xml.sel("//p").text());
+    }
+
+    // --- content(XML) ---
+
+    @Test
+    void content_xml_replacesAllChildren() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old text<b>bold</b></p></root>");
+        XML fragment = XML.parse("<div>new content</div>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        assertEquals(0, xml.sel("//b").size());
+        assertEquals(1, xml.sel("//p/div").size());
+        assertEquals("new content", xml.sel("//p/div").text());
+    }
+
+    @Test
+    void content_xml_preservesNodeAttributes() {
+        // Arrange
+        XML xml = XML.parse("<root><p class=\"x\" id=\"1\">old</p></root>");
+        XML fragment = XML.parse("<span>new</span>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        assertEquals("x", xml.sel("//p").attr("class"));
+        assertEquals("1", xml.sel("//p").attr("id"));
+    }
+
+    @Test
+    void content_xml_preservesNodePosition() {
+        // Arrange
+        XML xml = XML.parse("<root><a/><p>old</p><z/></root>");
+        XML fragment = XML.parse("<span>new</span>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        var children = xml.sel("/root/*").list();
+        assertEquals(3, children.size());
+        assertEquals("a", children.get(0).name());
+        assertEquals("p", children.get(1).name());
+        assertEquals("z", children.get(2).name());
+    }
+
+    @Test
+    void content_xml_importsRootElement() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old</p></root>");
+        XML fragment = XML.parse("<div><b>nested</b></div>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        assertEquals(1, xml.sel("//p/div").size());
+        assertEquals(1, xml.sel("//p/div/b").size());
+        assertEquals("nested", xml.sel("//p/div/b").text());
+    }
+
+    @Test
+    void content_xml_appliedToAllNodes() {
+        // Arrange
+        XML xml = XML.parse("<root><p>a</p><p>b</p></root>");
+        XML fragment = XML.parse("<span>replaced</span>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        assertEquals(2, xml.sel("//span").size());
+        for (Node p : xml.sel("//p")) {
+            assertEquals("replaced", p.sel("span").text());
+        }
+    }
+
+    @Test
+    void content_xml_chainable() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old</p></root>");
+        Sel sel = xml.sel("//p");
+        XML fragment = XML.parse("<span/>");
+
+        // Act
+        Sel result = sel.content(fragment);
+
+        // Assert
+        assertSame(sel, result);
+    }
+
+    @Test
+    void content_xml_emptySelection_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        XML fragment = XML.parse("<span/>");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> xml.sel("//nonexistent").content(fragment));
+    }
+
+    // --- content(String) ---
+
+    @Test
+    void content_string_parsesAndReplaces() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old text</p></root>");
+
+        // Act
+        xml.sel("//p").content("<span>new</span>");
+
+        // Assert
+        assertEquals(1, xml.sel("//p/span").size());
+        assertEquals("new", xml.sel("//p/span").text());
+    }
+
+    @Test
+    void content_string_withMixedContent() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old</p></root>");
+
+        // Act
+        xml.sel("//p").content("<b>bold</b> text");
+
+        // Assert
+        assertEquals(1, xml.sel("//p/b").size());
+        assertEquals("bold", xml.sel("//b").text());
+        assertEquals(" text", xml.sel("//p").text());
+    }
+
+    @Test
+    void content_string_singleElement() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old</p></root>");
+
+        // Act
+        xml.sel("//p").content("<div>x</div>");
+
+        // Assert
+        assertEquals(1, xml.sel("//p/div").size());
+        assertEquals("x", xml.sel("//p/div").text());
+    }
+
+    @Test
+    void content_string_emptyString_removesAllChildren() {
+        // Arrange
+        XML xml = XML.parse("<root><p>text<b>bold</b></p></root>");
+
+        // Act
+        xml.sel("//p").content("");
+
+        // Assert
+        assertEquals("", xml.sel("//p").text());
+        assertEquals("", xml.sel("//p").deepText());
+        assertEquals(0, xml.sel("//b").size());
+    }
+
+    @Test
+    void content_string_chainable() {
+        // Arrange
+        XML xml = XML.parse("<root><p>old</p></root>");
+        Sel sel = xml.sel("//p");
+
+        // Act
+        Sel result = sel.content("<span/>");
+
+        // Assert
+        assertSame(sel, result);
+    }
+
+    @Test
+    void content_xml_replacesTextOnlyNode() {
+        // Arrange
+        XML xml = XML.parse("<root><p>only text here</p></root>");
+        XML fragment = XML.parse("<span>replaced</span>");
+
+        // Act
+        xml.sel("//p").content(fragment);
+
+        // Assert
+        assertEquals("", xml.sel("//p").text());
+        assertEquals(1, xml.sel("//p/span").size());
+        assertEquals("replaced", xml.sel("//p/span").text());
+    }
+
     // --- Utility ---
 
     private int countTextNodes(org.w3c.dom.Node parent) {

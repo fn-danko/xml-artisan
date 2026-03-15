@@ -223,6 +223,39 @@ Trasforma il testo diretto su ogni nodo. Legge con `text()` (senza side-effect),
 xml.sel("//code").text(v -> v.trim());
 ```
 
+#### `.cdata(String value) → Sel`
+
+Identico a `text(String)` ma inserisce un CDATA_SECTION_NODE invece di TEXT_NODE. Chiama `normalizeText()` internamente, rimuove tutti i nodi TEXT/CDATA figli diretti e inserisce un singolo CDATA_SECTION_NODE come primo figlio. Preserva tutti gli elementi figli.
+
+```java
+xml.sel("//script").cdata("var x = '<div>hello</div>';");
+// Il contenuto con caratteri speciali XML è preservato nel CDATA
+```
+
+**Nota:** `text()` in lettura restituisce il contenuto sia di TEXT che di CDATA — la distinzione è solo in scrittura.
+
+#### `.content(XML fragment) → Sel`
+
+Sostituisce **tutti** i figli di ogni nodo nella selezione con il root element del frammento XML. Preserva il nodo stesso (tag, attributi, posizione nel DOM).
+
+```java
+// <p class="x">old text</p>  →  <p class="x"><div><b>new</b> content</div></p>
+xml.sel("//p").content(XML.parse("<div><b>new</b> content</div>"));
+```
+
+#### `.content(String xmlContent) → Sel`
+
+Variante stringa. Accetta una stringa XML che può contenere mixed content senza un singolo root. Internamente wrappata in un tag sintetico, parsata, e i **figli** del wrapper vengono importati.
+
+```java
+// <p class="x">old text</p>  →  <p class="x"><b>new</b> content</p>
+xml.sel("//p").content("<b>new</b> content");
+```
+
+**Differenza chiave:**
+- `content(XML)` → importa il root element del frammento (un singolo nodo)
+- `content(String)` → parsa con wrapper, importa i figli del wrapper (può essere mixed content)
+
 #### `.normalizeText() → Sel`
 
 Unifica i nodi TEXT/CDATA figli diretti frammentati in un singolo nodo, posizionato come primo figlio. Se almeno uno era CDATA, il risultato è CDATA. Lascia intatti gli elementi figli.
@@ -616,6 +649,14 @@ Imposta il contenuto testuale usando una funzione che riceve il dato associato.
 
 ```java
 .textWith(person -> person.getBio())
+```
+
+#### `.cdataWith(Function<T, String> fn) → JoinedSel<T>`
+
+Imposta il contenuto come CDATA_SECTION_NODE usando una funzione che riceve il dato associato. Simmetrico a `textWith` ma produce un nodo CDATA.
+
+```java
+.cdataWith(script -> script.getSource())
 ```
 
 #### `.eachWith(BiConsumer<Node, T> fn) → JoinedSel<T>`
