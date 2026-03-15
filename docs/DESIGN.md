@@ -148,6 +148,14 @@ L'API privilegia nomi brevi e leggibili: `sel`, `attr`, `text`, `before`, `after
 
 **Motivazione:** In XPath standard, `//a` cerca dalla radice del documento indipendentemente dal nodo contesto. Questo è contro-intuitivo quando l'utente scrive `xml.sel("//div").sel("//a")` aspettandosi di cercare gli `<a>` dentro i `<div>`. L'API Java XPath (`xpath.evaluate(expression, contextNode)`) supporta nativamente i nodi contesto, ma l'espressione deve essere relativa (`.//a`). Il rewrite automatico evita questa trappola.
 
+### `text()` lavora sul testo diretto, non ricorsivo
+
+**Decisione:** `text()` legge/scrive solo i nodi TEXT/CDATA figli diretti. `deepText()` fornisce la lettura ricorsiva (ex comportamento di `text()`).
+
+**Motivazione:** L'XML di produzione contiene spesso mixed content: `<p>Hello <b>world</b> today</p>`. Il caso d'uso più comune è leggere/scrivere il testo diretto di un nodo, non quello ricorsivo. Con la vecchia semantica (`getTextContent()`), `text()` restituiva `"Hello world today"` ma `text("New")` distruggeva l'elemento `<b>`. La nuova semantica rende `text()` coerente tra lettura e scrittura: entrambe operano sul testo diretto, preservando gli elementi figli. `normalizeText()` unifica i nodi testo frammentati. `coalesceText()` è la variante distruttiva per quando serve appiattire tutto.
+
+**Alternativa scartata:** Mantenere `text()` ricorsivo e aggiungere `directText()`. Scartata perché il caso d'uso diretto è più frequente e la semantica ricorsiva è sorprendente in scrittura (distrugge figli).
+
 ### Thread safety: nessuna garanzia
 
 **Decisione:** Nessun tipo della libreria è thread-safe.

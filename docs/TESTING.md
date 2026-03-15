@@ -99,6 +99,7 @@ src/test/java/net/fndanko/xml/artisan/
  ├── SerializationTest.java           // .toString(), .toFragment(), .writeTo(), OutputOptions
  ├── XPathTest.java                   // XPath contestuale, rewrite //, namespace
  ├── ResilienceTest.java              // Sel vuoto, Node vuoto, chaining sicuro, no-op
+ ├── TextNodeTest.java               // normalizeText, text (nuova semantica), deepText, coalesceText
  ├── DataBindingTest.java             // .data(), matching posizionale e per chiave
  ├── JoinShorthandTest.java           // .join("tag"), default enter/update/exit
  ├── JoinConfigTest.java              // JoinConfig builder, .defaults(), null esplicito, override
@@ -132,8 +133,8 @@ Registrare namespace multipli
 .attr(name) restituisce valore del primo nodo
 .attr(name) su attributo inesistente → stringa vuota
 .attr(name) su selezione vuota → stringa vuota
-.text() restituisce testo del primo nodo
-.text() su nodo senza testo → stringa vuota
+.text() restituisce testo diretto del primo nodo (non ricorsivo)
+.text() su nodo senza testo diretto → stringa vuota
 .text() su selezione vuota → stringa vuota
 .size() restituisce numero corretto di nodi
 .size() su selezione vuota → 0
@@ -146,7 +147,7 @@ Registrare namespace multipli
 ```
 .attr(name, value) imposta su tutti i nodi
 .attr(name, value) su selezione vuota → no-op, chaining continua
-.text(value) imposta su tutti i nodi
+.text(value) imposta testo diretto su tutti i nodi, preserva elementi figli
 .text(value) su selezione vuota → no-op, chaining continua
 .remove() rimuove i nodi dal DOM
 .remove() su selezione vuota → no-op
@@ -159,7 +160,7 @@ Chaining multiplo: .attr().text().attr() funziona
 ```
 .attr(name, fn) trasforma il valore di ogni nodo
 .attr(name, fn) con attributo inesistente → fn riceve stringa vuota
-.text(fn) trasforma il testo di ogni nodo
+.text(fn) trasforma il testo diretto di ogni nodo, preserva elementi figli
 .text(fn) con testo vuoto → fn riceve stringa vuota
 Funzioni di trasformazione eseguite su ogni nodo (non solo il primo)
 ```
@@ -296,11 +297,61 @@ Node vuoto: .remove() → no-op
 Node vuoto: .unwrap() → null
 Chaining misto con selezioni e nodi vuoti: xml.sel("//nothing").first().children().sel("//x").attr("a","b") → no-op senza eccezioni
 .end() su selezione radice → sé stessa (no eccezione)
+Sel vuoto: .deepText() → ""
+Sel vuoto: .normalizeText() → no-op
+Sel vuoto: .coalesceText() → no-op
+Node vuoto: .deepText() → ""
+Node vuoto: .normalizeText() → no-op
+Node vuoto: .coalesceText() → no-op
 .data() con lista vuota → tutti nodi in exit
 .data() su Sel vuota → tutti dati in enter
 ```
 
-### 14. `DataBindingTest` — Data binding base
+### 14. `TextNodeTest` — Text node handling
+
+```
+normalizeText: nodi testo adiacenti unificati in uno
+normalizeText: testo attorno ad elementi unificato come primo figlio
+normalizeText: mix TEXT + CDATA produce CDATA
+normalizeText: solo CDATA resta CDATA
+normalizeText: nessun nodo testo → no-op
+normalizeText: elemento vuoto → no-op
+normalizeText: preserva elementi figli
+normalizeText: preserva attributi
+normalizeText: applicato a tutti i nodi della selezione
+normalizeText: chainable (ritorna self)
+text() lettura: testo diretto semplice
+text() lettura: mixed content → solo testo diretto
+text() lettura: nessun testo diretto → stringa vuota
+text() lettura: non modifica il DOM
+text() lettura: nodi testo frammentati concatenati
+text() lettura: selezione vuota → stringa vuota
+text() scrittura: sostituisce testo diretto, preserva figli
+text() scrittura: stringa vuota rimuove testo diretto
+text() scrittura: aggiunge testo su nodo senza testo
+text() scrittura: applicato a tutti i nodi
+text() scrittura: chainable
+text() trasformazione: applicata a ogni nodo
+text() trasformazione: preserva figli su mixed content
+text() trasformazione: testo vuoto → fn riceve stringa vuota
+deepText: elemento semplice → testo completo
+deepText: mixed content → tutto il testo discendente
+deepText: nidificato → concatena tutto
+deepText: selezione vuota → stringa vuota
+deepText: nessun side-effect
+coalesceText: mixed content → testo singolo, figli rimossi
+coalesceText: elementi nidificati → appiattisce tutto
+coalesceText: nessun mixed content → invariato
+coalesceText: preserva attributi
+coalesceText: applicato a tutti i nodi
+coalesceText: chainable
+coalesceText poi text → legge stringa singola
+XML.normalizeText: ricorsivo su tutti i livelli
+XML.normalizeText: preserva struttura
+XML.normalizeText: chainable (ritorna XML)
+```
+
+### 15. `DataBindingTest` — Data binding base
 
 ```
 .data() con matching posizionale: corrispondenza corretta
@@ -313,7 +364,7 @@ Chaining misto con selezioni e nodi vuoti: xml.sel("//nothing").first().children
 .data() con chiavi duplicate nei dati: duplicati in enter
 ```
 
-### 15. `JoinShorthandTest` — Join forma abbreviata
+### 16. `JoinShorthandTest` — Join forma abbreviata
 
 ```
 .join("tag") crea nodi mancanti con il tag specificato
@@ -325,7 +376,7 @@ Chaining misto con selezioni e nodi vuoti: xml.sel("//nothing").first().children
 Operazioni post-join con .attrWith() funzionano
 ```
 
-### 16. `JoinConfigTest` — JoinConfig builder
+### 17. `JoinConfigTest` — JoinConfig builder
 
 ```
 .defaults("tag") attiva comportamento shorthand
@@ -340,7 +391,7 @@ Senza .defaults(): exit non specificato → ignora
 Handler personalizzati enter/update/exit eseguiti correttamente
 ```
 
-### 17. `JoinedSelTest` — Operazioni post-join
+### 18. `JoinedSelTest` — Operazioni post-join
 
 ```
 .attrWith() accede al dato associato
@@ -354,7 +405,7 @@ Handler personalizzati enter/update/exit eseguiti correttamente
 Chaining: .attrWith().textWith().attr().toSel().sel()
 ```
 
-### 18. `JoinAdvancedTest` — Scenari avanzati
+### 19. `JoinAdvancedTest` — Scenari avanzati
 
 ```
 Join con parent multipli: enter eseguito per ciascun parent

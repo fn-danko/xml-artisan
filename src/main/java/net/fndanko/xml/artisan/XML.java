@@ -149,6 +149,30 @@ public class XML {
         }
     }
 
+    // --- Text normalization ---
+
+    public XML normalizeText() {
+        normalizeTextRecursive(document.getDocumentElement());
+        return this;
+    }
+
+    private void normalizeTextRecursive(org.w3c.dom.Node node) {
+        // Depth-first post-order: normalize children first, then self
+        org.w3c.dom.NodeList children = node.getChildNodes();
+        // Collect element children first (NodeList is live)
+        java.util.List<org.w3c.dom.Node> elements = new java.util.ArrayList<>();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                elements.add(child);
+            }
+        }
+        for (org.w3c.dom.Node el : elements) {
+            normalizeTextRecursive(el);
+        }
+        Sel.normalizeTextNode(node);
+    }
+
     // --- Namespace ---
 
     public XML namespace(String prefix, String uri) {

@@ -106,6 +106,9 @@ XML
  ├── // Selezioni
  ├── .sel(xpath) → Sel                              // Sel vuoto se nessun match
  │
+ ├── // Text normalization
+ ├── .normalizeText() → XML                          // ricorsivo su tutto il documento
+ │
  ├── // Namespace
  ├── .namespace(prefix, uri) → XML                  // registra namespace per XPath
  │
@@ -125,15 +128,18 @@ Selezione di zero o più nodi. Tutte le operazioni di modifica sono immediate (s
 Sel
  ├── // Lettura (dal primo nodo)
  ├── .attr(name) → String                          // "" se vuoto o attributo assente
- ├── .text() → String                              // "" se vuoto o senza text content
+ ├── .text() → String                              // testo diretto (concatena TEXT/CDATA figli, no side-effect)
+ ├── .deepText() → String                          // testo ricorsivo (getTextContent)
  ├── .size() → int
  ├── .empty() → boolean
  │
  ├── // Modifica (immediata, restituisce la stessa Sel)
  ├── .attr(name, value) → Sel
  ├── .attr(name, Function<String,String>) → Sel     // fn(valoreCorrente) → nuovo
- ├── .text(value) → Sel
- ├── .text(Function<String,String>) → Sel
+ ├── .text(value) → Sel                             // normalizeText + testo diretto, preserva figli
+ ├── .text(Function<String,String>) → Sel            // text() + fn + text(String)
+ ├── .normalizeText() → Sel                          // unifica TEXT/CDATA diretti in uno, primo figlio
+ ├── .coalesceText() → Sel                           // distruttivo: getTextContent → rimuove tutto → testo singolo
  ├── .remove() → Sel                                // ritorna selezione padre
  │
  ├── // Inserimento strutturale (side-effect, restituisce la stessa Sel)
@@ -394,7 +400,10 @@ Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel 
 | `.list()` su `Sel` vuoto | Lista vuota |
 | `.size()` su `Sel` vuoto | `0` |
 | `.attr(name)` su primo nodo, attributo assente | `""` |
-| `.text()` su primo nodo, senza text content | `""` |
+| `.text()` su primo nodo, senza testo diretto | `""` |
+| `.deepText()` su primo nodo, senza text content | `""` |
+| `.normalizeText()` su `Sel` vuoto | No-op |
+| `.coalesceText()` su `Sel` vuoto | No-op |
 
 #### `Node` vuoto (null object)
 
@@ -403,7 +412,10 @@ Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel 
 | `.attr(name)` | `""` |
 | `.attr(name, value)` | No-op, restituisce lo stesso `Node` vuoto |
 | `.text()` | `""` |
+| `.deepText()` | `""` |
 | `.text(value)` | No-op, restituisce lo stesso `Node` vuoto |
+| `.normalizeText()` | No-op |
+| `.coalesceText()` | No-op |
 | `.name()` | `""` |
 | `.children()` | `Sel` vuoto |
 | `.parent()` | `Node` vuoto |

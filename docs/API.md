@@ -103,6 +103,18 @@ xml.sel("//dc:title").text("Nuovo titolo");
 
 **Ritorno:** L'oggetto `XML` stesso (per chaining).
 
+### Text normalization
+
+#### `.normalizeText() → XML`
+
+Applica `normalizeText()` ricorsivamente a tutto il documento (depth-first post-order: prima normalizza i figli, poi il nodo stesso).
+
+```java
+xml.normalizeText();
+```
+
+**Ritorno:** L'oggetto `XML` stesso (per chaining).
+
 ### Serializzazione
 
 #### `.toString() → String`
@@ -146,9 +158,25 @@ Restituisce il valore dell'attributo dal **primo nodo** della selezione.
 
 #### `.text() → String`
 
-Restituisce il contenuto testuale del **primo nodo** della selezione.
+Restituisce il testo diretto del **primo nodo** della selezione — concatena il contenuto di tutti i nodi TEXT e CDATA figli diretti, senza modificare il DOM.
 
-**Ritorno:** `""` se la selezione è vuota o non ha contenuto testuale.
+**Ritorno:** `""` se la selezione è vuota o non ha testo diretto.
+
+```java
+// <p>Hello <b>world</b> today</p>
+xml.sel("//p").text();   // → "Hello  today" (solo testo diretto, non ricorsivo)
+```
+
+#### `.deepText() → String`
+
+Restituisce il testo ricorsivo di tutti i discendenti del **primo nodo** (equivalente a `getTextContent()`).
+
+**Ritorno:** `""` se la selezione è vuota.
+
+```java
+// <p>Hello <b>world</b> today</p>
+xml.sel("//p").deepText();   // → "Hello world today"
+```
 
 #### `.size() → int`
 
@@ -180,18 +208,37 @@ xml.sel("//a").attr("href", v -> v.replace("http://", "https://"));
 
 #### `.text(String value) → Sel`
 
-Imposta il contenuto testuale con valore fisso su tutti i nodi.
+Imposta il testo diretto su tutti i nodi. Chiama `normalizeText()` internamente, rimuove tutti i nodi TEXT/CDATA figli diretti e inserisce un singolo TEXT_NODE come primo figlio. Preserva tutti gli elementi figli.
 
 ```java
 xml.sel("//title").text("Nuovo titolo");
+// <p>Hello <b>world</b> today</p> + .text("New") → <p>New<b>world</b></p>
 ```
 
 #### `.text(Function<String, String> fn) → Sel`
 
-Trasforma il contenuto testuale su ogni nodo.
+Trasforma il testo diretto su ogni nodo. Legge con `text()` (senza side-effect), applica la funzione, scrive con `text(String)`.
 
 ```java
 xml.sel("//code").text(v -> v.trim());
+```
+
+#### `.normalizeText() → Sel`
+
+Unifica i nodi TEXT/CDATA figli diretti frammentati in un singolo nodo, posizionato come primo figlio. Se almeno uno era CDATA, il risultato è CDATA. Lascia intatti gli elementi figli.
+
+```java
+// <p>Hello <b>world</b> today</p> → <p>Hello  today<b>world</b></p>
+xml.sel("//p").normalizeText();
+```
+
+#### `.coalesceText() → Sel`
+
+Normalizzazione distruttiva: raccoglie `getTextContent()`, rimuove **tutti** i figli, setta un singolo nodo testo. Distrugge gli elementi figli.
+
+```java
+// <p>Hello <b>world</b> today</p> → <p>Hello world today</p>
+xml.sel("//p").coalesceText();
 ```
 
 #### `.remove() → Sel`

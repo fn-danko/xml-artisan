@@ -37,8 +37,7 @@ public class JoinedSel<T> extends Sel {
 
     public JoinedSel<T> textWith(Function<T, String> fn) {
         for (org.w3c.dom.Node n : nodes) {
-            T datum = datumMap.get(n);
-            n.setTextContent(fn.apply(datum));
+            Sel.writeDirectText(n, fn.apply(datumMap.get(n)));
         }
         return this;
     }

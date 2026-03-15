@@ -68,6 +68,21 @@ class JoinedSelTest {
     }
 
     @Test
+    void textWith_onMixedContent_preservesChildElements() {
+        XML xml = XML.parse("<root><item>old <b>bold</b> text</item></root>");
+
+        xml.sel("//item")
+            .data(List.of("new"))
+            .join("item")
+            .textWith(datum -> datum);
+
+        // text is replaced, <b> is preserved
+        Node item = xml.sel("//item").first();
+        assertEquals("new", item.text());
+        assertEquals(1, xml.sel("//b").size());
+    }
+
+    @Test
     void eachWith_executesOnEachNode() {
         XML xml = XML.parse("<root><item/><item/></root>");
         List<String> collected = new ArrayList<>();

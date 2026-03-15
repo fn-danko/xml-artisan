@@ -42,6 +42,11 @@ public class Sel implements Iterable<Node> {
 
     public String text() {
         if (nodes.isEmpty()) return "";
+        return readDirectText(nodes.get(0));
+    }
+
+    public String deepText() {
+        if (nodes.isEmpty()) return "";
         String tc = nodes.get(0).getTextContent();
         return tc != null ? tc : "";
     }
@@ -79,18 +84,101 @@ public class Sel implements Iterable<Node> {
 
     public Sel text(String value) {
         for (org.w3c.dom.Node n : nodes) {
-            n.setTextContent(value);
+            writeDirectText(n, value);
         }
         return this;
     }
 
     public Sel text(Function<String, String> fn) {
         for (org.w3c.dom.Node n : nodes) {
-            String current = n.getTextContent();
-            if (current == null) current = "";
-            n.setTextContent(fn.apply(current));
+            writeDirectText(n, fn.apply(readDirectText(n)));
         }
         return this;
+    }
+
+    public Sel normalizeText() {
+        for (org.w3c.dom.Node n : nodes) {
+            normalizeTextNode(n);
+        }
+        return this;
+    }
+
+    public Sel coalesceText() {
+        for (org.w3c.dom.Node n : nodes) {
+            String tc = n.getTextContent();
+            if (tc == null) tc = "";
+            while (n.hasChildNodes()) {
+                n.removeChild(n.getFirstChild());
+            }
+            n.appendChild(ownerDoc(n).createTextNode(tc));
+        }
+        return this;
+    }
+
+    static String readDirectText(org.w3c.dom.Node n) {
+        StringBuilder sb = new StringBuilder();
+        org.w3c.dom.NodeList children = n.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            short type = child.getNodeType();
+            if (type == org.w3c.dom.Node.TEXT_NODE || type == org.w3c.dom.Node.CDATA_SECTION_NODE) {
+                String v = child.getNodeValue();
+                if (v != null) sb.append(v);
+            }
+        }
+        return sb.toString();
+    }
+
+    static void writeDirectText(org.w3c.dom.Node n, String value) {
+        normalizeTextNode(n);
+        List<org.w3c.dom.Node> toRemove = new ArrayList<>();
+        org.w3c.dom.NodeList children = n.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            short type = child.getNodeType();
+            if (type == org.w3c.dom.Node.TEXT_NODE || type == org.w3c.dom.Node.CDATA_SECTION_NODE) {
+                toRemove.add(child);
+            }
+        }
+        for (org.w3c.dom.Node r : toRemove) {
+            n.removeChild(r);
+        }
+        org.w3c.dom.Document doc = ownerDoc(n);
+        n.insertBefore(doc.createTextNode(value), n.getFirstChild());
+    }
+
+    static void normalizeTextNode(org.w3c.dom.Node n) {
+        org.w3c.dom.NodeList children = n.getChildNodes();
+        StringBuilder sb = new StringBuilder();
+        List<org.w3c.dom.Node> textNodes = new ArrayList<>();
+        boolean hasCdata = false;
+        for (int i = 0; i < children.getLength(); i++) {
+            org.w3c.dom.Node child = children.item(i);
+            short type = child.getNodeType();
+            if (type == org.w3c.dom.Node.TEXT_NODE || type == org.w3c.dom.Node.CDATA_SECTION_NODE) {
+                textNodes.add(child);
+                String v = child.getNodeValue();
+                if (v != null) sb.append(v);
+                if (type == org.w3c.dom.Node.CDATA_SECTION_NODE) hasCdata = true;
+            }
+        }
+        if (textNodes.size() <= 1) return;
+        for (org.w3c.dom.Node tn : textNodes) {
+            n.removeChild(tn);
+        }
+        org.w3c.dom.Document doc = ownerDoc(n);
+        org.w3c.dom.Node unified = hasCdata
+                ? doc.createCDATASection(sb.toString())
+                : doc.createTextNode(sb.toString());
+        n.insertBefore(unified, n.getFirstChild());
+    }
+
+    private static org.w3c.dom.Document ownerDoc(org.w3c.dom.Node n) {
+        org.w3c.dom.Document doc = n.getOwnerDocument();
+        if (doc == null && n instanceof org.w3c.dom.Document) {
+            return (org.w3c.dom.Document) n;
+        }
+        return doc;
     }
 
     public Sel remove() {

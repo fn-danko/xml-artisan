@@ -68,12 +68,13 @@ OutputOptions    → Immutable serialization config (builder pattern)
   11. `SerializationTest` — toString, toFragment, writeTo, OutputOptions
   12. `XPathTest` — contextual XPath, rewrite, namespaces
   13. `ResilienceTest` — empty Sel/Node, chaining safety
+  14. `TextNodeTest` — normalizeText, text (direct semantics), deepText, coalesceText
 - **5 test suites (v1.1 data binding):**
-  14. `DataBindingTest` — positional and key-based matching, enter/update/exit classification
-  15. `JoinShorthandTest` — `.join("tag")` shorthand, defaults behavior
-  16. `JoinConfigTest` — builder, defaults, explicit null overrides, handler order, custom handlers
-  17. `JoinedSelTest` — `attrWith`, `textWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
-  18. `JoinAdvancedTest` — multi-parent grouping, insertion order, repeated joins, mixed types, full lifecycle
+  15. `DataBindingTest` — positional and key-based matching, enter/update/exit classification
+  16. `JoinShorthandTest` — `.join("tag")` shorthand, defaults behavior
+  17. `JoinConfigTest` — builder, defaults, explicit null overrides, handler order, custom handlers
+  18. `JoinedSelTest` — `attrWith`, `textWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
+  19. `JoinAdvancedTest` — multi-parent grouping, insertion order, repeated joins, mixed types, full lifecycle
 
 ## Data Binding (v1.1)
 

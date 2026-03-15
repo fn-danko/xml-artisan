@@ -20,6 +20,9 @@ class ResilienceTest {
             empty.attr("a", "v");
             empty.text();
             empty.text("v");
+            empty.deepText();
+            empty.normalizeText();
+            empty.coalesceText();
             empty.remove();
             empty.append("tag");
             empty.prepend("tag");
@@ -49,11 +52,50 @@ class ResilienceTest {
                 xml.sel("//nothing")
                         .attr("a", "1")
                         .text("x")
+                        .normalizeText()
+                        .coalesceText()
                         .append("child")
                         .attr("b", "2")
                         .sel("sub")
                         .end()
                         .remove());
+    }
+
+    // --- Selezione vuota: nuovi metodi ---
+
+    @Test
+    void emptySel_deepText_returnsEmpty() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        Sel empty = xml.sel("//nonexistent");
+
+        // Act
+        String result = empty.deepText();
+
+        // Assert
+        assertEquals("", result);
+    }
+
+    @Test
+    void emptySel_normalizeText_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        Sel empty = xml.sel("//nonexistent");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.normalizeText());
+        assertTrue(empty.empty());
+    }
+
+    @Test
+    void emptySel_coalesceText_noOp() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+        Sel empty = xml.sel("//nonexistent");
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.coalesceText());
+        assertTrue(empty.empty());
     }
 
     // --- Node vuoto da .first() su Sel vuota: tutte le operazioni sono no-op ---
@@ -70,6 +112,9 @@ class ResilienceTest {
             empty.attr("a", "v");
             empty.text();
             empty.text("v");
+            empty.deepText();
+            empty.normalizeText();
+            empty.coalesceText();
             empty.remove();
             empty.append("tag");
             empty.prepend("tag");
@@ -261,6 +306,42 @@ class ResilienceTest {
 
         // Assert — original document unchanged
         assertEquals(1, xml.sel("//keep").size());
+    }
+
+    // --- Node vuoto: .deepText() ritorna "" ---
+
+    @Test
+    void emptyNode_deepText_returnsEmpty() {
+        // Arrange
+        Node empty = XML.parse("<root/>").sel("//x").first();
+
+        // Act
+        String result = empty.deepText();
+
+        // Assert
+        assertEquals("", result);
+    }
+
+    // --- Node vuoto: .normalizeText() no-op ---
+
+    @Test
+    void emptyNode_normalizeText_noOp() {
+        // Arrange
+        Node empty = XML.parse("<root/>").sel("//x").first();
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.normalizeText());
+    }
+
+    // --- Node vuoto: .coalesceText() no-op ---
+
+    @Test
+    void emptyNode_coalesceText_noOp() {
+        // Arrange
+        Node empty = XML.parse("<root/>").sel("//x").first();
+
+        // Act / Assert
+        assertDoesNotThrow(() -> empty.coalesceText());
     }
 
     // --- Node vuoto: .unwrap() ritorna null ---
