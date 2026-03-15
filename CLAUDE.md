@@ -19,16 +19,22 @@
 XML              → Entry point, wraps Document + XPath engine + namespace context
 Sel              → Selection of 0..N DOM nodes, fluent batch operations
 Node extends Sel → Single-node selection, DOM navigation, structural ops return new Node
+BoundSel<T>      → Sel + data list, produced by Sel.data(); performs enter/update/exit join
+JoinConfig<T>    → Immutable join configuration (enter/update/exit handlers, builder pattern)
+JoinedSel<T>     → Sel + datum map, produced by BoundSel.join(); data-aware post-join ops
 OutputOptions    → Immutable serialization config (builder pattern)
 ```
 
-**Layering:** Public API → XPath layer (context eval, `//` rewrite, namespaces) → DOM wrapper → `javax.xml.*`
+**Layering:** Public API → Data binding (join lifecycle) → XPath layer (context eval, `//` rewrite, namespaces) → DOM wrapper → `javax.xml.*`
 
 ### Key internal state
 
 - `XML`: holds `Document`, `XPath` instance, `Map<String,String>` namespace prefixes
 - `Sel`: holds `List<org.w3c.dom.Node>`, `Sel parent`, `XML owner`
 - `Node`: wraps single `org.w3c.dom.Node` (or null for `EMPTY` singleton)
+- `BoundSel<T>`: holds `List<T> data`, optional `Function<T,String> dataKey`, optional `Function<Node,String> nodeKey`
+- `JoinConfig<T>`: holds enter/update/exit handlers + explicit-set flags; `defaults(tag)` sets all three
+- `JoinedSel<T>`: holds `Map<org.w3c.dom.Node, T> datumMap` for data-aware operations
 
 ## Design Decisions
 
@@ -62,10 +68,24 @@ OutputOptions    → Immutable serialization config (builder pattern)
   11. `SerializationTest` — toString, toFragment, writeTo, OutputOptions
   12. `XPathTest` — contextual XPath, rewrite, namespaces
   13. `ResilienceTest` — empty Sel/Node, chaining safety
+- **5 test suites (v1.1 data binding):**
+  14. `DataBindingTest` — positional and key-based matching, enter/update/exit classification
+  15. `JoinShorthandTest` — `.join("tag")` shorthand, defaults behavior
+  16. `JoinConfigTest` — builder, defaults, explicit null overrides, handler order, custom handlers
+  17. `JoinedSelTest` — `attrWith`, `textWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
+  18. `JoinAdvancedTest` — multi-parent grouping, insertion order, repeated joins, mixed types, full lifecycle
 
-## Data Binding (v1.1 — not yet implemented)
+## Data Binding (v1.1)
 
-`BoundSel<T>`, `JoinConfig<T>`, `JoinedSel<T>` are stubbed. D3.js-style enter/update/exit lifecycle. Implementation deferred.
+D3.js-style enter/update/exit join lifecycle via `Sel.data()` → `BoundSel.join()` → `JoinedSel`.
+
+- **Type flow:** `Sel` → `.data(list)` → `BoundSel<T>` → `.join(config)` → `JoinedSel<T>` → `.toSel()` → `Sel`
+- **Matching:** positional (by index) or key-based (via `dataKey`/`nodeKey` functions)
+- **Per-parent grouping:** nodes with different parents form separate groups; each group independently joins against the full data array (D3 semantics)
+- **Handler order:** exit → update → enter
+- **Handler resolution:** `JoinConfig.defaults("tag")` sets enter=append, update=identity, exit=remove; individual `.enter()`/`.update()`/`.exit()` override selectively; explicit `null` means "do nothing" (distinct from "not set")
+- **Merge ordering:** index-based `slots[]` array ensures merged list follows data order; `order()` reorders DOM to match
+- **Post-join ops:** `attrWith`, `textWith`, `eachWith` apply data-aware transforms to merged (enter+update) nodes
 
 ## Package
 
