@@ -4,7 +4,16 @@ plugins {
 }
 
 group = "net.fndanko"
-version = "0.1"
+version = "1.1"
+
+base {
+    archivesName.set("xml-artisan")
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
 
 repositories {
     mavenCentral()
