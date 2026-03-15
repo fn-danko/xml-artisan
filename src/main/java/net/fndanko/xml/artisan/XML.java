@@ -133,6 +133,16 @@ public class XML {
         }
     }
 
+    public int count(String xpathExpr) {
+        try {
+            XPathExpression expr = xpath.compile(xpathExpr);
+            NodeList nodeList = (NodeList) expr.evaluate(document, XPathConstants.NODESET);
+            return nodeList.getLength();
+        } catch (XPathExpressionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // --- Selezioni ---
 
     public Sel sel(String xpathExpr) {

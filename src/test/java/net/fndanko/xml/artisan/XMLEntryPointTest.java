@@ -140,6 +140,56 @@ class XMLEntryPointTest {
         assertEquals(before, xml.toString());
     }
 
+    // --- count ---
+
+    @Test
+    void count_multipleMatches_returnsCorrectCount() {
+        // Arrange
+        XML xml = XML.parse("<root><item/><item/><item/></root>");
+
+        // Act
+        int result = xml.count("//item");
+
+        // Assert
+        assertEquals(3, result);
+    }
+
+    @Test
+    void count_noMatch_returnsZero() {
+        // Arrange
+        XML xml = XML.parse("<root/>");
+
+        // Act
+        int result = xml.count("//nonexistent");
+
+        // Assert
+        assertEquals(0, result);
+    }
+
+    @Test
+    void count_singleMatch_returnsOne() {
+        // Arrange
+        XML xml = XML.parse("<root><only/></root>");
+
+        // Act
+        int result = xml.count("//only");
+
+        // Assert
+        assertEquals(1, result);
+    }
+
+    @Test
+    void count_withPredicate_countsFilteredNodes() {
+        // Arrange
+        XML xml = XML.parse("<root><item lang=\"it\"/><item lang=\"en\"/><item lang=\"it\"/></root>");
+
+        // Act
+        int result = xml.count("//item[@lang='it']");
+
+        // Assert
+        assertEquals(2, result);
+    }
+
     // --- namespace ---
 
     @Test
