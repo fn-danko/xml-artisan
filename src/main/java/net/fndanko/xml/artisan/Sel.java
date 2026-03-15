@@ -107,7 +107,7 @@ public class Sel implements Iterable<Node> {
     public Sel append(String tagName) {
         for (org.w3c.dom.Node n : nodes) {
             org.w3c.dom.Document doc = n.getOwnerDocument();
-            n.appendChild(doc.createElement(tagName));
+            n.appendChild(createElement(doc, tagName));
         }
         return this;
     }
@@ -124,8 +124,7 @@ public class Sel implements Iterable<Node> {
     public Sel prepend(String tagName) {
         for (org.w3c.dom.Node n : nodes) {
             org.w3c.dom.Document doc = n.getOwnerDocument();
-            org.w3c.dom.Node newChild = doc.createElement(tagName);
-            n.insertBefore(newChild, n.getFirstChild());
+            n.insertBefore(createElement(doc, tagName), n.getFirstChild());
         }
         return this;
     }
@@ -143,8 +142,7 @@ public class Sel implements Iterable<Node> {
         for (org.w3c.dom.Node n : nodes) {
             if (n.getParentNode() == null) continue;
             org.w3c.dom.Document doc = n.getOwnerDocument();
-            org.w3c.dom.Node newNode = doc.createElement(tagName);
-            n.getParentNode().insertBefore(newNode, n);
+            n.getParentNode().insertBefore(createElement(doc, tagName), n);
         }
         return this;
     }
@@ -163,7 +161,7 @@ public class Sel implements Iterable<Node> {
         for (org.w3c.dom.Node n : nodes) {
             if (n.getParentNode() == null) continue;
             org.w3c.dom.Document doc = n.getOwnerDocument();
-            org.w3c.dom.Node newNode = doc.createElement(tagName);
+            org.w3c.dom.Node newNode = createElement(doc, tagName);
             org.w3c.dom.Node nextSibling = n.getNextSibling();
             if (nextSibling != null) {
                 n.getParentNode().insertBefore(newNode, nextSibling);
@@ -279,6 +277,13 @@ public class Sel implements Iterable<Node> {
     }
 
     // --- Utility interna ---
+
+    org.w3c.dom.Element createElement(org.w3c.dom.Document doc, String tagName) {
+        if (owner != null) {
+            return owner.createElement(doc, tagName);
+        }
+        return doc.createElement(tagName);
+    }
 
     static String rewriteXPath(String xpathExpr) {
         if (xpathExpr.startsWith("//")) {

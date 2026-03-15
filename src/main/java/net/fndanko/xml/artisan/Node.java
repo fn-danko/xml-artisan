@@ -54,7 +54,7 @@ public class Node extends Sel {
     public Node append(String tagName) {
         if (isNullObject()) return EMPTY;
         org.w3c.dom.Document doc = domNode.getOwnerDocument();
-        org.w3c.dom.Node newChild = doc.createElement(tagName);
+        org.w3c.dom.Node newChild = createElement(doc, tagName);
         domNode.appendChild(newChild);
         return new Node(newChild, this, owner);
     }
@@ -72,7 +72,7 @@ public class Node extends Sel {
     public Node prepend(String tagName) {
         if (isNullObject()) return EMPTY;
         org.w3c.dom.Document doc = domNode.getOwnerDocument();
-        org.w3c.dom.Node newChild = doc.createElement(tagName);
+        org.w3c.dom.Node newChild = createElement(doc, tagName);
         domNode.insertBefore(newChild, domNode.getFirstChild());
         return new Node(newChild, this, owner);
     }
@@ -89,7 +89,7 @@ public class Node extends Sel {
     public Node insert(String tagName, Node before) {
         if (isNullObject()) return EMPTY;
         org.w3c.dom.Document doc = domNode.getOwnerDocument();
-        org.w3c.dom.Node newChild = doc.createElement(tagName);
+        org.w3c.dom.Node newChild = createElement(doc, tagName);
         domNode.insertBefore(newChild, before.unwrap());
         return new Node(newChild, this, owner);
     }
@@ -98,7 +98,7 @@ public class Node extends Sel {
     public Node before(String tagName) {
         if (isNullObject()) return EMPTY;
         org.w3c.dom.Document doc = domNode.getOwnerDocument();
-        org.w3c.dom.Node newNode = doc.createElement(tagName);
+        org.w3c.dom.Node newNode = createElement(doc, tagName);
         domNode.getParentNode().insertBefore(newNode, domNode);
         return new Node(newNode, this, owner);
     }
@@ -116,7 +116,7 @@ public class Node extends Sel {
     public Node after(String tagName) {
         if (isNullObject()) return EMPTY;
         org.w3c.dom.Document doc = domNode.getOwnerDocument();
-        org.w3c.dom.Node newNode = doc.createElement(tagName);
+        org.w3c.dom.Node newNode = createElement(doc, tagName);
         org.w3c.dom.Node nextSibling = domNode.getNextSibling();
         if (nextSibling != null) {
             domNode.getParentNode().insertBefore(newNode, nextSibling);

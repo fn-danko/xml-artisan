@@ -98,7 +98,9 @@ public class XML {
 
     public static XML create(String rootTagName) {
         try {
-            DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
             Document doc = builder.newDocument();
             doc.appendChild(doc.createElement(rootTagName));
             return new XML(doc);
@@ -217,5 +219,20 @@ public class XML {
 
     XPath xpath() {
         return xpath;
+    }
+
+    org.w3c.dom.Element createElement(Document doc, String tagName) {
+        int colon = tagName.indexOf(':');
+        if (colon > 0) {
+            String prefix = tagName.substring(0, colon);
+            String uri = namespaces.get(prefix);
+            if (uri != null) {
+                return doc.createElementNS(uri, tagName);
+            }
+            throw new IllegalArgumentException(
+                "Namespace prefix '" + prefix + "' is not registered. "
+                + "Call xml.namespace(\"" + prefix + "\", uri) before creating elements with this prefix.");
+        }
+        return doc.createElement(tagName);
     }
 }
