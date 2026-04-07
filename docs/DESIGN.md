@@ -13,7 +13,6 @@
 3. [Principi di design](#principi-di-design)
 4. [Decisioni chiave e motivazioni](#decisioni-chiave-e-motivazioni)
 5. [Confronto con l'esistente](#confronto-con-lesistente)
-6. [Roadmap](#roadmap)
 
 ---
 
@@ -187,24 +186,3 @@ L'API privilegia nomi brevi e leggibili: `sel`, `attr`, `text`, `before`, `after
 
 Il differenziatore principale rispetto a tutte le alternative è il **data binding con join pattern**. jOOX offre un'API fluent simile ma non supporta la sincronizzazione dati-nodi. dom4j ha la sua API di navigazione ma non è fluent. Nessuna libreria Java esistente porta il paradigma D3 nel mondo XML.
 
----
-
-## Roadmap
-
-### v1.0 — Core
-
-- `XML`, `Sel`, `Node` con operazioni dirette (selezione, modifica, navigazione, inserimento strutturale).
-- Serializzazione e output con `OutputOptions`.
-- Gestione XPath contestuale con rewrite automatico `//` → `.//`.
-- Resilienza completa (null object pattern, no-op su selezioni vuote).
-
-### v1.1 — Data binding
-
-- `BoundSel<T>`, `JoinedSel<T>`, `JoinConfig<T>`.
-- Pattern join con enter/update/exit.
-- Matching posizionale e per key function.
-- Ordinamento post-join con `.order()`.
-
-### v2.0 — Integrazione con XML Spelunker
-
-- Bridge tra Spelunker (streaming di XML di grandi dimensioni) e Artisan (manipolazione fluent in-memory).
