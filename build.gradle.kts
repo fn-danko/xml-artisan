@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("java-library")
+    id("maven-publish")
 }
 
 group = "net.fndanko"
@@ -33,4 +34,22 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/fn-danko/xml-artisan")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                password = System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+    publications {
+        create<MavenPublication>("mavenJava") {
+            from(components["java"])
+        }
+    }
 }

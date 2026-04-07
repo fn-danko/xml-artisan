@@ -14,11 +14,68 @@ La caratteristica distintiva è il sistema di **selezioni con data binding**, is
 
 ### Installazione
 
+Il pacchetto è distribuito tramite [GitHub Packages](https://github.com/fn-danko/xml-artisan/packages). È necessario configurare il registry e autenticarsi con un token GitHub con scope `read:packages`.
+
+#### Gradle (Kotlin DSL)
+
+In `settings.gradle.kts` o `build.gradle.kts`, aggiungere il repository:
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/fn-danko/xml-artisan")
+        credentials {
+            username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_ACTOR")
+            password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+}
+```
+
+Poi aggiungere la dipendenza:
+
+```kotlin
+dependencies {
+    implementation("net.fndanko:xml-artisan:1.4")
+}
+```
+
+Le credenziali possono essere definite in `~/.gradle/gradle.properties`:
+
+```properties
+gpr.user=IL_TUO_USERNAME_GITHUB
+gpr.key=IL_TUO_TOKEN_GITHUB
+```
+
+#### Maven
+
+Aggiungere il repository in `~/.m2/settings.xml`:
+
 ```xml
+<servers>
+  <server>
+    <id>github</id>
+    <username>IL_TUO_USERNAME_GITHUB</username>
+    <password>IL_TUO_TOKEN_GITHUB</password>
+  </server>
+</servers>
+```
+
+Poi nel `pom.xml`:
+
+```xml
+<repositories>
+  <repository>
+    <id>github</id>
+    <url>https://maven.pkg.github.com/fn-danko/xml-artisan</url>
+  </repository>
+</repositories>
+
 <dependency>
   <groupId>net.fndanko</groupId>
   <artifactId>xml-artisan</artifactId>
-  <version>1.0.0</version>
+  <version>1.4</version>
 </dependency>
 ```
 
