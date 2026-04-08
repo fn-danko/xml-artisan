@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.fndanko"
-version = "1.4"
+version = "1.4.1"
 
 base {
     archivesName.set("xml-artisan")

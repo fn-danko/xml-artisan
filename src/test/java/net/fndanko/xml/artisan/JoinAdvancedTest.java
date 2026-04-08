@@ -74,10 +74,39 @@ class JoinAdvancedTest {
         // No items exist, two groups each get new children
         xml.sel("//group").sel("item").data(List.of("X")).join("item");
 
-        // Empty selection → single group under document root, not per-group
-        // This is a limitation: empty sub-selections don't preserve parent context
-        // Verify nodes were created somewhere
+        // Each group gets its own enter — one item per group
+        assertEquals(2, xml.sel("//item").size());
+        assertEquals(1, xml.sel("//group[@id='a']/item").size());
+        assertEquals(1, xml.sel("//group[@id='b']/item").size());
+    }
+
+    @Test
+    void multipleParents_emptySubSelWithMultipleData() {
+        XML xml = XML.parse("<root><group id='a'/><group id='b'/></root>");
+
+        // Each group independently joins full data array
+        xml.sel("//group").sel("item").data(List.of("X", "Y")).join("item")
+            .textWith(d -> d);
+
+        assertEquals(4, xml.sel("//item").size());
+        assertEquals(2, xml.sel("//group[@id='a']/item").size());
+        assertEquals(2, xml.sel("//group[@id='b']/item").size());
+    }
+
+    @Test
+    void chainedEmptySelections_onlyImmediateParentUsed() {
+        // D3 semantics: chaining selectAll on an empty result loses parent context
+        // after the first empty level. Only the immediate parent Sel is consulted.
+        XML xml = XML.parse("<root><group id='a'/><group id='b'/></root>");
+
+        // sel("subgroup") is empty → parent is the groups Sel
+        // sel("item") is also empty → parent is the empty subgroup Sel
+        // Since subgroup Sel is empty, fallback to document root
+        xml.sel("//group").sel("subgroup").sel("item").data(List.of("X")).join("item");
+
+        // Items created under document root, not under groups (no intermediate synthesis)
         assertEquals(1, xml.sel("//item").size());
+        assertEquals(0, xml.sel("//group/item").size());
     }
 
     // --- Exit then enter in same join — parent captured before exit ---
