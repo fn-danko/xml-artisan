@@ -36,6 +36,27 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.register("updateReadmeVersion") {
+    doLast {
+        val readme = file("README.md")
+        val updated = readme.readText()
+            .replace(Regex("""xml-artisan:[\d.]+"""), "xml-artisan:$version")
+            .replace(Regex("""<version>[\d.]+</version>"""), "<version>$version</version>")
+        readme.writeText(updated)
+    }
+}
+
+tasks.register("checkReadmeVersion") {
+    doLast {
+        val readme = file("README.md").readText()
+        if ("xml-artisan:$version" !in readme) {
+            error("README.md has stale version — run: ./gradlew updateReadmeVersion")
+        }
+    }
+}
+
+tasks.named("check") { dependsOn("checkReadmeVersion") }
+
 publishing {
     repositories {
         maven {

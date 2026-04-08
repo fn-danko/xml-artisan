@@ -88,6 +88,13 @@ D3.js-style enter/update/exit join lifecycle via `Sel.data()` → `BoundSel.join
 - **Merge ordering:** index-based `slots[]` array ensures merged list follows data order; `order()` reorders DOM to match
 - **Post-join ops:** `attrWith`, `textWith`, `cdataWith`, `eachWith` apply data-aware transforms to merged (enter+update) nodes
 
+## Version Bump Process
+
+1. Update `version` in `build.gradle.kts`
+2. Run `./gradlew updateReadmeVersion` to sync README.md
+3. Run `./gradlew build` to verify (includes `checkReadmeVersion`)
+4. Commit, tag `vX.Y.Z`, push with tag
+
 ## Package
 
 `net.fndanko.xml.artisan` — all public types in a single flat package.
