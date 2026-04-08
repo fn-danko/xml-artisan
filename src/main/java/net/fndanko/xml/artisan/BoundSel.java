@@ -38,17 +38,15 @@ public class BoundSel<T> {
         // Group selection nodes by parent — each group joins independently (D3 semantics)
         Map<org.w3c.dom.Node, List<org.w3c.dom.Node>> groups = groupByParent(sel.nodes);
 
-        // Empty selection: use parent Sel's nodes as group parents (D3 semantics —
-        // selectAll on a non-empty selection preserves one empty group per parent node)
-        if (groups.isEmpty()) {
-            Sel parentSel = sel.parent;
-            if (parentSel != sel && !parentSel.nodes.isEmpty()) {
-                for (org.w3c.dom.Node parentNode : parentSel.nodes) {
-                    groups.put(parentNode, new ArrayList<>());
-                }
-            } else if (owner != null) {
-                groups.put(owner.document().getDocumentElement(), new ArrayList<>());
+        // Ensure every parent from the parent Sel has a group (D3 semantics —
+        // selectAll preserves one group per parent node, even when empty)
+        Sel parentSel = sel.parent;
+        if (parentSel != sel && !parentSel.nodes.isEmpty()) {
+            for (org.w3c.dom.Node parentNode : parentSel.nodes) {
+                groups.putIfAbsent(parentNode, new ArrayList<>());
             }
+        } else if (groups.isEmpty() && owner != null) {
+            groups.put(owner.document().getDocumentElement(), new ArrayList<>());
         }
 
         List<org.w3c.dom.Node> allMerged = new ArrayList<>();

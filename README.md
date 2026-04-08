@@ -37,7 +37,7 @@ Poi aggiungere la dipendenza:
 
 ```kotlin
 dependencies {
-    implementation("net.fndanko:xml-artisan:1.4.1")
+    implementation("net.fndanko:xml-artisan:1.4.2")
 }
 ```
 
@@ -75,7 +75,7 @@ Poi nel `pom.xml`:
 <dependency>
   <groupId>net.fndanko</groupId>
   <artifactId>xml-artisan</artifactId>
-  <version>1.4.1</version>
+  <version>1.4.2</version>
 </dependency>
 ```
 

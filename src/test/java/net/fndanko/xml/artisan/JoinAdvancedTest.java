@@ -2,6 +2,7 @@ package net.fndanko.xml.artisan;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -309,5 +310,227 @@ class JoinAdvancedTest {
         assertEquals("A", items.get(0).attr("id"));
         // items.get(1) is the newly created enter node
         assertEquals("C", items.get(2).attr("id"));
+    }
+
+    // --- Edge cases: empty sub-selection parent recovery ---
+
+    @Test
+    void emptySubSel_singleParent_createsUnderCorrectParent() {
+        XML xml = XML.parse("<root><container/></root>");
+
+        xml.sel("//container").sel("item").data(List.of("A", "B")).join("item")
+            .textWith(d -> d);
+
+        assertEquals(2, xml.sel("//container/item").size());
+        assertEquals("A", xml.sel("//container/item[1]").first().text());
+        assertEquals("B", xml.sel("//container/item[2]").first().text());
+    }
+
+    @Test
+    void emptySubSel_fromNode_createsUnderThatNode() {
+        XML xml = XML.parse("<root><div id='target'/><div id='other'/></root>");
+
+        Node target = xml.sel("//div[@id='target']").first();
+        target.sel("item").data(List.of("X")).join("item");
+
+        assertEquals(1, xml.sel("//div[@id='target']/item").size());
+        assertEquals(0, xml.sel("//div[@id='other']/item").size());
+    }
+
+    @Test
+    void emptySubSel_parentHasDuplicateDomNodes() {
+        // XPath union can return the same node — sel deduplicates via LinkedHashSet,
+        // but verify grouping doesn't create duplicate children
+        XML xml = XML.parse("<root><g id='x'/></root>");
+
+        // sel("//g | //g") would deduplicate to one node in Sel
+        xml.sel("//g | //g").sel("item").data(List.of("A")).join("item");
+
+        assertEquals(1, xml.sel("//item").size());
+        assertEquals(1, xml.sel("//g/item").size());
+    }
+
+    @Test
+    void emptySubSel_parentsAtDifferentDepths() {
+        XML xml = XML.parse("<root><a><b/></a><c/></root>");
+
+        // Select nodes at different depths, then empty sub-sel + join
+        xml.sel("//b | //c").sel("item").data(List.of("X")).join("item");
+
+        assertEquals(2, xml.sel("//item").size());
+        assertEquals(1, xml.sel("//b/item").size());
+        assertEquals(1, xml.sel("//c/item").size());
+    }
+
+    @Test
+    void chainedEmptySelections_threeDeep() {
+        XML xml = XML.parse("<root><a/></root>");
+
+        // a exists, but b, c, item don't
+        // sel("b") empty → parent = sel("//a") with nodes
+        // sel("c") empty → parent = sel("b") which is empty
+        // sel("item") empty → parent = sel("c") which is empty
+        // Falls back to document root
+        xml.sel("//a").sel("b").sel("c").sel("item").data(List.of("X")).join("item");
+
+        assertEquals(1, xml.sel("//item").size());
+        assertEquals(0, xml.sel("//a/item").size());
+        // Created under document root
+        assertEquals(1, xml.sel("/root/item").size());
+    }
+
+    // --- Edge case: mixed empty/non-empty groups ---
+
+    @Test
+    void mixedGroups_someParentsHaveChildren_othersEmpty() {
+        XML xml = XML.parse("<root><g id='a'><item/></g><g id='b'/></root>");
+
+        // Group a: 1 existing item, group b: 0 items
+        // Both should independently join with data ["X"]
+        // Group a: 1 update, group b: 1 enter
+        xml.sel("//g").sel("item").data(List.of("X")).join("item");
+
+        assertEquals(2, xml.sel("//item").size());
+        assertEquals(1, xml.sel("//g[@id='a']/item").size());
+        assertEquals(1, xml.sel("//g[@id='b']/item").size());
+    }
+
+    // --- Edge cases: data boundaries with empty selections ---
+
+    @Test
+    void emptyData_emptySelection_createsNothing() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        xml.sel("//g").sel("item").data(List.of()).join("item");
+
+        assertEquals(0, xml.sel("//item").size());
+    }
+
+    @Test
+    void keyBased_allEnter_emptySubSel() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        xml.sel("//g").sel("item")
+            .data(List.of("X", "Y"), s -> s, n -> n.attr("id"))
+            .join(JoinConfig.<String>builder()
+                .defaults("item")
+                .enter((parent, datum) -> {
+                    Node n = parent.append("item");
+                    n.attr("id", datum);
+                    return n;
+                })
+                .build());
+
+        // Each group creates 2 items (all enter, key matching finds nothing)
+        assertEquals(4, xml.sel("//item").size());
+        assertEquals(2, xml.sel("//g[@id='a']/item").size());
+        assertEquals(2, xml.sel("//g[@id='b']/item").size());
+    }
+
+    @Test
+    void keyBased_duplicateDataKeys_emptySubSel() {
+        XML xml = XML.parse("<root><g/></root>");
+
+        xml.sel("//g").sel("item")
+            .data(List.of("same", "same", "different"), s -> s, n -> n.attr("id"))
+            .join(JoinConfig.<String>builder()
+                .defaults("item")
+                .enter((parent, datum) -> {
+                    Node n = parent.append("item");
+                    n.attr("id", datum);
+                    return n;
+                })
+                .build());
+
+        // All 3 data items should create enter nodes (no existing nodes to match)
+        assertEquals(3, xml.sel("//g/item").size());
+    }
+
+    // --- Edge cases: post-join operations after empty sub-sel ---
+
+    @Test
+    void emptySubSel_joinThenAttrWith() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        xml.sel("//g").sel("item").data(List.of("X", "Y")).join("item")
+            .attrWith("val", (current, datum) -> datum);
+
+        // All 4 items (2 per group) should have the attr set
+        List<Node> items = xml.sel("//item").list();
+        assertEquals(4, items.size());
+        for (Node item : items) {
+            assertFalse(item.attr("val").isEmpty());
+        }
+    }
+
+    @Test
+    void emptySubSel_joinThenOrder() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        xml.sel("//g").sel("item").data(List.of("B", "A")).join("item")
+            .textWith(d -> d)
+            .order();
+
+        // order() should reorder within each parent, not mix across parents
+        assertEquals(2, xml.sel("//g[@id='a']/item").size());
+        assertEquals(2, xml.sel("//g[@id='b']/item").size());
+    }
+
+    @Test
+    void emptySubSel_customEnterHandler_receivesCorrectParent() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        List<String> parentIds = new ArrayList<>();
+
+        xml.sel("//g").sel("item")
+            .data(List.of("X"))
+            .join(JoinConfig.<String>builder()
+                .defaults("item")
+                .enter((parent, datum) -> {
+                    parentIds.add(parent.attr("id"));
+                    return parent.append("item");
+                })
+                .build());
+
+        // Enter handler should be called once per group, with the actual group parent
+        assertEquals(2, parentIds.size());
+        assertTrue(parentIds.contains("a"));
+        assertTrue(parentIds.contains("b"));
+    }
+
+    // --- Edge cases: repeated and nested joins ---
+
+    @Test
+    void emptySubSel_joinTwice_secondJoinSeesFirstResults() {
+        XML xml = XML.parse("<root><g id='a'/><g id='b'/></root>");
+
+        // First join: create items under each group
+        xml.sel("//g").sel("item").data(List.of("X")).join("item");
+        assertEquals(2, xml.sel("//item").size());
+
+        // Second join: re-select and join with more data
+        // Now items exist, so groupByParent finds them normally
+        xml.sel("//g").sel("item").data(List.of("X", "Y")).join("item");
+        assertEquals(4, xml.sel("//item").size());
+        assertEquals(2, xml.sel("//g[@id='a']/item").size());
+        assertEquals(2, xml.sel("//g[@id='b']/item").size());
+    }
+
+    @Test
+    void reusedSelObject_joinedTwice() {
+        XML xml = XML.parse("<root></root>");
+
+        Sel items = xml.sel("//item");
+
+        // First join creates 2 items
+        items.data(List.of("A", "B")).join("item").textWith(d -> d);
+        assertEquals(2, xml.sel("//item").size());
+
+        // Second join on same (now stale) Sel object — still has empty nodes list
+        // Parent recovery should still work (parent is root sel)
+        items.data(List.of("X", "Y", "Z")).join("item").textWith(d -> d);
+
+        // Creates 3 MORE items (Sel object is stale, doesn't see the 2 existing ones)
+        assertEquals(5, xml.sel("//item").size());
     }
 }
