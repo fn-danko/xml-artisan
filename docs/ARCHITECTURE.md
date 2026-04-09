@@ -440,11 +440,16 @@ Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel 
 
 ### Eccezioni ammesse
 
-Le uniche eccezioni sono per errori di programmazione non recuperabili:
+Gerarchia: `XmlArtisanException extends RuntimeException` con sottoclassi specifiche. Le uniche eccezioni sono per errori di programmazione non recuperabili:
 
-- **XPath malformato** — errore di sintassi nell'espressione → unchecked exception che wrappa `XPathExpressionException`.
+- **XML malformato** — `XML.parse()` / `XML.from()` con input non valido → `ParseException`.
+- **XPath malformato** — errore di sintassi nell'espressione → `XPathException` (il messaggio include l'espressione).
+- **Nome non valido** — tag o attributi con caratteri non ammessi → `InvalidNameException` (il messaggio include il nome).
 - **File non trovato** — `XML.from()` con path inesistente → `UncheckedIOException`.
-- **XML malformato** — `XML.parse()` con stringa non-XML → unchecked exception con messaggio descrittivo che wrappa `SAXException`.
+- **Prefisso namespace non registrato** — `IllegalArgumentException`.
+- **Errore di serializzazione** — `XmlArtisanException` (tipo base).
+
+Tutte estendono `RuntimeException`, quindi catturare `XmlArtisanException` intercetta tutti gli errori della libreria (esclusi I/O e namespace).
 
 ---
 

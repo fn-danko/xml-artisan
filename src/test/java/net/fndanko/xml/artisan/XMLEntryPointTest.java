@@ -231,7 +231,34 @@ class XMLEntryPointTest {
     // --- parse malformed XML ---
 
     @Test
-    void parse_malformedXml_throwsRuntimeException() {
-        assertThrows(RuntimeException.class, () -> XML.parse("this is not xml at all <><>"));
+    void parse_malformedXml_throwsParseException() {
+        assertThrows(ParseException.class, () -> XML.parse("this is not xml at all <><>"));
+    }
+
+    @Test
+    void parse_malformedXml_messageContainsDetail() {
+        ParseException ex = assertThrows(ParseException.class, () -> XML.parse("<unclosed>"));
+        assertTrue(ex.getMessage().startsWith("Failed to parse XML:"));
+    }
+
+    @Test
+    void create_invalidTagName_throwsInvalidNameException() {
+        assertThrows(InvalidNameException.class, () -> XML.create("123invalid"));
+    }
+
+    @Test
+    void create_invalidTagName_messageContainsName() {
+        InvalidNameException ex = assertThrows(InvalidNameException.class, () -> XML.create("123bad"));
+        assertTrue(ex.getMessage().contains("123bad"));
+    }
+
+    @Test
+    void allCustomExceptions_extendXmlArtisanException() {
+        // ParseException
+        assertThrows(XmlArtisanException.class, () -> XML.parse("<bad"));
+        // XPathException
+        assertThrows(XmlArtisanException.class, () -> XML.parse("<r/>").sel("[invalid"));
+        // InvalidNameException
+        assertThrows(XmlArtisanException.class, () -> XML.create("123bad"));
     }
 }

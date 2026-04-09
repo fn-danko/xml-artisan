@@ -129,6 +129,13 @@ class XPathTest {
         XML xml = XML.parse("<root><item/></root>");
 
         // Act / Assert
-        assertThrows(RuntimeException.class, () -> xml.sel("///[invalid!!xpath"));
+        assertThrows(XPathException.class, () -> xml.sel("///[invalid!!xpath"));
+    }
+
+    @Test
+    void sel_malformedXPath_messageContainsExpression() {
+        XML xml = XML.parse("<root/>");
+        XPathException ex = assertThrows(XPathException.class, () -> xml.sel("///[bad"));
+        assertTrue(ex.getMessage().contains("///[bad"));
     }
 }

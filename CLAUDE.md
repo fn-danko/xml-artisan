@@ -23,6 +23,7 @@ BoundSel<T>      → Sel + data list, produced by Sel.data(); performs enter/upd
 JoinConfig<T>    → Immutable join configuration (enter/update/exit handlers, builder pattern)
 JoinedSel<T>     → Sel + datum map, produced by BoundSel.join(); data-aware post-join ops
 OutputOptions    → Immutable serialization config (builder pattern)
+XmlArtisanException → Base unchecked exception (ParseException, XPathException, InvalidNameException)
 ```
 
 **Layering:** Public API → Data binding (join lifecycle) → XPath layer (context eval, `//` rewrite, namespaces) → DOM wrapper → `javax.xml.*`
@@ -46,7 +47,13 @@ OutputOptions    → Immutable serialization config (builder pattern)
 - **XPath `//` rewrite** — in sub-selections (`sel.sel()`, `node.sel()`), leading `//` is rewritten to `.//` for contextual search
 - **`remove()` returns parent** — uniquely among Sel methods, for backtracking after deletion
 - **`end()` on root** returns self (no exception)
-- **Only permitted exceptions:** malformed XPath → RuntimeException, bad XML → unchecked wrapping SAXException, missing file → UncheckedIOException
+- **Exception hierarchy** — `XmlArtisanException extends RuntimeException` with subclasses:
+  - `ParseException` — malformed XML input
+  - `XPathException` — invalid XPath expression
+  - `InvalidNameException` — bad tag or attribute names
+  - Base `XmlArtisanException` — serialization failures
+  - `IllegalArgumentException` — unregistered namespace prefix (JDK standard)
+  - `UncheckedIOException` — file I/O errors (JDK standard)
 
 ## Test Conventions
 
@@ -75,6 +82,12 @@ OutputOptions    → Immutable serialization config (builder pattern)
   17. `JoinConfigTest` — builder, defaults, explicit null overrides, handler order, custom handlers
   18. `JoinedSelTest` — `attrWith`, `textWith`, `cdataWith`, `eachWith`, `toSel`, `sel`, `order`, chaining
   19. `JoinAdvancedTest` — multi-parent grouping, insertion order, repeated joins, mixed types, full lifecycle
+- **5 property test suites (jqwik):**
+  20. `ParsingProperties` — valid/malformed XML parsing invariants
+  21. `RoundTripProperties` — parse/serialize/reparse preservation, idempotency
+  22. `XPathProperties` — evaluation safety, rewrite equivalence, count consistency
+  23. `SelInvariantProperties` — selection operation contracts (size, empty, attr, text, append, remove)
+  24. `ChaosProperties` — aggressive stress testing (garbage, unicode, deep nesting, wide docs, chaos XPath/attrs)
 
 ## Data Binding (v1.1)
 

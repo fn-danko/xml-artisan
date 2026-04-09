@@ -73,9 +73,9 @@ public class XML {
         } catch (java.io.IOException e) {
             throw new UncheckedIOException(e);
         } catch (org.xml.sax.SAXException e) {
-            throw new RuntimeException("Malformed XML: " + e.getMessage(), e);
+            throw new ParseException("Failed to parse XML: " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ParseException("Failed to parse XML: " + e.getMessage(), e);
         }
     }
 
@@ -88,11 +88,11 @@ public class XML {
             doc.getDocumentElement().normalize();
             return new XML(doc);
         } catch (org.xml.sax.SAXException e) {
-            throw new RuntimeException("Malformed XML: " + e.getMessage(), e);
+            throw new ParseException("Failed to parse XML: " + e.getMessage(), e);
         } catch (java.io.IOException e) {
             throw new UncheckedIOException(e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ParseException("Failed to parse XML: " + e.getMessage(), e);
         }
     }
 
@@ -105,7 +105,7 @@ public class XML {
             doc.appendChild(doc.createElement(rootTagName));
             return new XML(doc);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new InvalidNameException("Invalid element name '" + rootTagName + "': " + e.getMessage(), e);
         }
     }
 
@@ -117,7 +117,7 @@ public class XML {
             String result = (String) expr.evaluate(document, XPathConstants.STRING);
             return result != null ? result : "";
         } catch (XPathExpressionException e) {
-            throw new RuntimeException(e);
+            throw new XPathException("Invalid XPath expression '" + xpathExpr + "': " + e.getMessage(), e);
         }
     }
 
@@ -129,7 +129,7 @@ public class XML {
                 node.setNodeValue(value);
             }
         } catch (XPathExpressionException e) {
-            throw new RuntimeException(e);
+            throw new XPathException("Invalid XPath expression '" + xpathExpr + "': " + e.getMessage(), e);
         }
     }
 
@@ -139,7 +139,7 @@ public class XML {
             NodeList nodeList = (NodeList) expr.evaluate(document, XPathConstants.NODESET);
             return nodeList.getLength();
         } catch (XPathExpressionException e) {
-            throw new RuntimeException(e);
+            throw new XPathException("Invalid XPath expression '" + xpathExpr + "': " + e.getMessage(), e);
         }
     }
 
@@ -155,7 +155,7 @@ public class XML {
             }
             return new Sel(nodes, null, this);
         } catch (XPathExpressionException e) {
-            throw new RuntimeException(e);
+            throw new XPathException("Invalid XPath expression '" + xpathExpr + "': " + e.getMessage(), e);
         }
     }
 
@@ -213,7 +213,7 @@ public class XML {
         } catch (java.io.IOException e) {
             throw new UncheckedIOException(e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new XmlArtisanException("Failed to serialize XML: " + e.getMessage(), e);
         }
     }
 
@@ -225,7 +225,7 @@ public class XML {
             transformer.transform(new DOMSource(document), new StreamResult(writer));
             return writer.toString();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new XmlArtisanException("Failed to serialize XML: " + e.getMessage(), e);
         }
     }
 
@@ -261,12 +261,20 @@ public class XML {
             String prefix = tagName.substring(0, colon);
             String uri = namespaces.get(prefix);
             if (uri != null) {
-                return doc.createElementNS(uri, tagName);
+                try {
+                    return doc.createElementNS(uri, tagName);
+                } catch (org.w3c.dom.DOMException e) {
+                    throw new InvalidNameException("Invalid element name '" + tagName + "': " + e.getMessage(), e);
+                }
             }
             throw new IllegalArgumentException(
                 "Namespace prefix '" + prefix + "' is not registered. "
                 + "Call xml.namespace(\"" + prefix + "\", uri) before creating elements with this prefix.");
         }
-        return doc.createElement(tagName);
+        try {
+            return doc.createElement(tagName);
+        } catch (org.w3c.dom.DOMException e) {
+            throw new InvalidNameException("Invalid element name '" + tagName + "': " + e.getMessage(), e);
+        }
     }
 }

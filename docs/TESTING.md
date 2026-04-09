@@ -273,7 +273,7 @@ XPath relativo in sotto-selezione cerca dal contesto
 XPath con predicati funziona
 XPath per attributi (@attr) funziona
 XPath con namespace funziona
-XPath malformato → eccezione unchecked
+XPath malformato → XPathException
 ```
 
 ### 13. `ResilienceTest` — Resilienza e null object

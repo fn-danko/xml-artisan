@@ -32,7 +32,7 @@ Carica e parsa un documento XML da file.
 XML xml = XML.from(Path.of("./catalog.xml"));
 ```
 
-**Eccezioni:** `UncheckedIOException` se il file non esiste. Unchecked exception se l'XML è malformato.
+**Eccezioni:** `UncheckedIOException` se il file non esiste. `ParseException` se l'XML è malformato.
 
 #### `XML.parse(String xmlString) → XML`
 
@@ -42,7 +42,7 @@ Parsa un documento XML da stringa.
 XML xml = XML.parse("<root><item id='1'/></root>");
 ```
 
-**Eccezioni:** Unchecked exception se l'XML è malformato.
+**Eccezioni:** `ParseException` se l'XML è malformato.
 
 #### `XML.create(String rootTagName) → XML`
 

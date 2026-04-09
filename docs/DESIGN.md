@@ -81,7 +81,7 @@ Solo API standard della JVM (`javax.xml.parsers`, `org.w3c.dom`, `javax.xml.xpat
 
 ### 8. Mai rompere la catena
 
-Nessuna operazione lancia eccezioni durante il chaining. Selezioni vuote, XPath senza risultati, operazioni su insiemi vuoti — tutto è gestito come no-op con valori sensibili (stringhe vuote, selezioni vuote, Node vuoti). Le uniche eccezioni sono per errori di programmazione non recuperabili (XPath malformato, file non trovato, XML non valido).
+Nessuna operazione lancia eccezioni durante il chaining. Selezioni vuote, XPath senza risultati, operazioni su insiemi vuoti — tutto è gestito come no-op con valori sensibili (stringhe vuote, selezioni vuote, Node vuoti). Le uniche eccezioni sono per errori di programmazione non recuperabili, con tipi specifici: `ParseException` (XML malformato), `XPathException` (XPath malformato), `InvalidNameException` (nomi non validi) — tutte sottoclassi di `XmlArtisanException extends RuntimeException`.
 
 ### 9. Nomi corti e intuitivi
 

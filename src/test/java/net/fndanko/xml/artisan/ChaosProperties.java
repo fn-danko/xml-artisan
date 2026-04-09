@@ -354,20 +354,12 @@ class ChaosProperties {
     }
 
     private static boolean isDocumentedException(RuntimeException e) {
-        // UncheckedIOException (missing file / IO errors)
+        // XmlArtisanException and all subclasses (ParseException, XPathException, InvalidNameException)
+        if (e instanceof XmlArtisanException) return true;
+        // UncheckedIOException (file I/O errors — JDK standard)
         if (e instanceof java.io.UncheckedIOException) return true;
-        // IllegalArgumentException (invalid tag names, etc.)
+        // IllegalArgumentException (unregistered namespace prefix)
         if (e instanceof IllegalArgumentException) return true;
-        // DOMException (invalid attribute names, DOM constraint violations)
-        if (e instanceof org.w3c.dom.DOMException) return true;
-        // RuntimeException wrapping SAXException (malformed XML)
-        if (e.getCause() instanceof org.xml.sax.SAXException) return true;
-        // RuntimeException wrapping XPathExpressionException (bad XPath)
-        if (e.getCause() instanceof javax.xml.xpath.XPathExpressionException) return true;
-        // RuntimeException wrapping DOMException (invalid chars in tag/attr names)
-        if (e.getCause() instanceof org.w3c.dom.DOMException) return true;
-        // RuntimeException with "Malformed XML" message (library's own wrapping)
-        if (e.getMessage() != null && e.getMessage().startsWith("Malformed XML")) return true;
         return false;
     }
 

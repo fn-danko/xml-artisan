@@ -62,22 +62,30 @@ public class Sel implements Iterable<Node> {
     // --- Modifica ---
 
     public Sel attr(String name, String value) {
-        for (org.w3c.dom.Node n : nodes) {
-            if (n instanceof Element) {
-                ((Element) n).setAttribute(name, value);
+        try {
+            for (org.w3c.dom.Node n : nodes) {
+                if (n instanceof Element) {
+                    ((Element) n).setAttribute(name, value);
+                }
             }
+        } catch (org.w3c.dom.DOMException e) {
+            throw new InvalidNameException("Invalid attribute name '" + name + "': " + e.getMessage(), e);
         }
         return this;
     }
 
     public Sel attr(String name, Function<String, String> fn) {
-        for (org.w3c.dom.Node n : nodes) {
-            if (n instanceof Element) {
-                Element el = (Element) n;
-                String current = el.getAttribute(name);
-                if (current == null) current = "";
-                el.setAttribute(name, fn.apply(current));
+        try {
+            for (org.w3c.dom.Node n : nodes) {
+                if (n instanceof Element) {
+                    Element el = (Element) n;
+                    String current = el.getAttribute(name);
+                    if (current == null) current = "";
+                    el.setAttribute(name, fn.apply(current));
+                }
             }
+        } catch (org.w3c.dom.DOMException e) {
+            throw new InvalidNameException("Invalid attribute name '" + name + "': " + e.getMessage(), e);
         }
         return this;
     }
@@ -360,7 +368,7 @@ public class Sel implements Iterable<Node> {
             }
             return new Sel(new ArrayList<>(seen), this, owner);
         } catch (XPathExpressionException e) {
-            throw new RuntimeException(e);
+            throw new XPathException("Invalid XPath expression '" + xpathExpr + "': " + e.getMessage(), e);
         }
     }
 
