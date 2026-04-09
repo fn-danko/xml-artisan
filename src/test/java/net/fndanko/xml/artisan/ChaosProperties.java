@@ -340,12 +340,31 @@ class ChaosProperties {
         try {
             action.run();
         } catch (RuntimeException e) {
-            // Documented exception types — OK
+            if (isDocumentedException(e)) return;
+            fail("Operation threw unexpected RuntimeException: " + e.getClass().getName() + ": " + e.getMessage());
         } catch (Error e) {
-            fail("Operation threw an Error (should never happen): " + e.getClass().getName() + ": " + e.getMessage());
+            fail("Operation threw an Error: " + e.getClass().getName() + ": " + e.getMessage());
         } catch (Throwable t) {
             fail("Operation threw unexpected exception: " + t.getClass().getName() + ": " + t.getMessage());
         }
+    }
+
+    private static boolean isDocumentedException(RuntimeException e) {
+        // UncheckedIOException (missing file / IO errors)
+        if (e instanceof java.io.UncheckedIOException) return true;
+        // IllegalArgumentException (invalid tag names, etc.)
+        if (e instanceof IllegalArgumentException) return true;
+        // DOMException (invalid attribute names, DOM constraint violations)
+        if (e instanceof org.w3c.dom.DOMException) return true;
+        // RuntimeException wrapping SAXException (malformed XML)
+        if (e.getCause() instanceof org.xml.sax.SAXException) return true;
+        // RuntimeException wrapping XPathExpressionException (bad XPath)
+        if (e.getCause() instanceof javax.xml.xpath.XPathExpressionException) return true;
+        // RuntimeException wrapping DOMException (invalid chars in tag/attr names)
+        if (e.getCause() instanceof org.w3c.dom.DOMException) return true;
+        // RuntimeException with "Malformed XML" message (library's own wrapping)
+        if (e.getMessage() != null && e.getMessage().startsWith("Malformed XML")) return true;
+        return false;
     }
 
     private static String escapeXml(String text) {
