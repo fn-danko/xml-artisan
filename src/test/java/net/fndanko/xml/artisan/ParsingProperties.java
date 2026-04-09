@@ -86,12 +86,18 @@ class ParsingProperties {
     }
 
     @Property
-    void malformedXml_onlyThrowsRuntimeException(@ForAll("malformedXml") String xmlStr) {
+    void malformedXml_onlyThrowsDocumentedExceptions(@ForAll("malformedXml") String xmlStr) {
         try {
             XML.parse(xmlStr);
             // Parsing succeeded — that's fine, some mutations are still valid
         } catch (RuntimeException e) {
-            // Expected — wrapping SAXException or similar
+            // Only SAXException wrapping or "Malformed XML" is expected from parse()
+            boolean isSax = e.getCause() instanceof org.xml.sax.SAXException;
+            boolean isMalformed = e.getMessage() != null && e.getMessage().startsWith("Malformed XML");
+            if (!isSax && !isMalformed) {
+                fail("XML.parse() threw unexpected RuntimeException: "
+                        + e.getClass().getName() + ": " + e.getMessage());
+            }
         } catch (Exception e) {
             fail("XML.parse() threw unexpected checked exception: " + e.getClass().getName());
         }

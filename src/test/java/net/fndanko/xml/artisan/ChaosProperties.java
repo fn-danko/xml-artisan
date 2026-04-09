@@ -238,7 +238,9 @@ class ChaosProperties {
             String result = item.attr(name);
             assertNotNull(result);
         } catch (RuntimeException e) {
-            // DOM may reject invalid attribute names — that's fine
+            if (!isDocumentedException(e)) {
+                fail("attr() threw unexpected RuntimeException: " + e.getClass().getName() + ": " + e.getMessage());
+            }
         }
     }
 
@@ -252,7 +254,9 @@ class ChaosProperties {
             String result = item.text();
             assertNotNull(result);
         } catch (RuntimeException e) {
-            // DOM may reject certain characters
+            if (!isDocumentedException(e)) {
+                fail("text() threw unexpected RuntimeException: " + e.getClass().getName() + ": " + e.getMessage());
+            }
         }
     }
 
