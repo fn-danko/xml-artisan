@@ -1,24 +1,24 @@
 # XML Artisan
 
-> Manipolazione fluent di documenti XML in Java, con selezioni ispirate a D3.js.
+> Fluent XML document manipulation in Java, with selections inspired by D3.js.
 
 **Package:** `net.fndanko.xml.artisan`
 
 ---
 
-## Cos'è XML Artisan
+## What is XML Artisan
 
-XML Artisan è una libreria Java che avvolge le API standard della JVM (DOM, XPath) in un'interfaccia fluent e concisa. Permette di leggere, modificare e creare documenti XML con catene di operazioni leggibili, senza dipendenze esterne.
+XML Artisan is a Java library that wraps the standard JVM APIs (DOM, XPath) behind a fluent, concise interface. It lets you read, modify, and create XML documents through readable operation chains, with zero external dependencies.
 
-La caratteristica distintiva è il sistema di **selezioni con data binding**, ispirato al join pattern di [D3.js](https://d3js.org/d3-selection/joining): si possono sincronizzare liste di dati Java con nodi XML tramite i gruppi enter, update e exit.
+Its standout feature is a **selection-based data binding** system, inspired by the join pattern from [D3.js](https://d3js.org/d3-selection/joining): you can synchronize Java data lists with XML nodes through enter, update, and exit groups.
 
-### Installazione
+### Installation
 
-Il pacchetto è distribuito tramite [GitHub Packages](https://github.com/fn-danko/xml-artisan/packages). È necessario configurare il registry e autenticarsi con un token GitHub con scope `read:packages`.
+The package is distributed via [GitHub Packages](https://github.com/fn-danko/xml-artisan/packages). You need to configure the registry and authenticate with a GitHub token that has the `read:packages` scope.
 
 #### Gradle (Kotlin DSL)
 
-In `settings.gradle.kts` o `build.gradle.kts`, aggiungere il repository:
+In `settings.gradle.kts` or `build.gradle.kts`, add the repository:
 
 ```kotlin
 repositories {
@@ -33,7 +33,7 @@ repositories {
 }
 ```
 
-Poi aggiungere la dipendenza:
+Then add the dependency:
 
 ```kotlin
 dependencies {
@@ -41,28 +41,28 @@ dependencies {
 }
 ```
 
-Le credenziali possono essere definite in `~/.gradle/gradle.properties`:
+Credentials can be defined in `~/.gradle/gradle.properties`:
 
 ```properties
-gpr.user=IL_TUO_USERNAME_GITHUB
-gpr.key=IL_TUO_TOKEN_GITHUB
+gpr.user=YOUR_GITHUB_USERNAME
+gpr.key=YOUR_GITHUB_TOKEN
 ```
 
 #### Maven
 
-Aggiungere il repository in `~/.m2/settings.xml`:
+Add the repository in `~/.m2/settings.xml`:
 
 ```xml
 <servers>
   <server>
     <id>github</id>
-    <username>IL_TUO_USERNAME_GITHUB</username>
-    <password>IL_TUO_TOKEN_GITHUB</password>
+    <username>YOUR_GITHUB_USERNAME</username>
+    <password>YOUR_GITHUB_TOKEN</password>
   </server>
 </servers>
 ```
 
-Poi nel `pom.xml`:
+Then in your `pom.xml`:
 
 ```xml
 <repositories>
@@ -83,49 +83,49 @@ Poi nel `pom.xml`:
 
 ## Quick Start
 
-### Caricare un documento
+### Loading a document
 
 ```java
-// Da file
+// From file
 XML xml = XML.from(Path.of("./catalog.xml"));
 
-// Da stringa
+// From string
 XML xml = XML.parse("<catalog><book id='1'><title>Java</title></book></catalog>");
 
-// Documento vuoto
+// Empty document
 XML xml = XML.create("catalog");
 ```
 
-### Leggere valori
+### Reading values
 
 ```java
 String id = xml.get("/catalog/book/@id");          // "1"
 String title = xml.get("/catalog/book[1]/title");   // "Java"
 ```
 
-### Modificare con selezioni
+### Modifying with selections
 
 ```java
-// Modifica batch su tutti i nodi che matchano
+// Batch modification on all matching nodes
 xml.sel("//book")
     .attr("available", "true");
 
-// Trasformazione con funzione
+// Transformation with a function
 xml.sel("//a").attr("href", v -> v.replace("http://", "https://"));
 
-// Sotto-selezioni con navigazione
+// Sub-selections with navigation
 xml.sel("//div")
     .attr("class", "container")
     .sel("//p")
         .attr("style", "margin: 0;")
         .sel("//a")
             .attr("target", "_blank")
-        .end()      // risale a //p
-    .end()          // risale a //div
+        .end()      // back to //p
+    .end()          // back to //div
     .attr("data-processed", "true");
 ```
 
-### Iterare
+### Iterating
 
 ```java
 // For-each
@@ -140,33 +140,33 @@ List<String> titles = xml.sel("//book/title")
     .collect(Collectors.toList());
 ```
 
-### Costruire strutture
+### Building structures
 
 ```java
 Node catalog = xml.sel("//catalog").first();
 catalog.append("book")
     .attr("id", "3")
-    .attr("lang", "it")
+    .attr("lang", "en")
     .append("title")
-        .text("Nuovo Libro");
+        .text("New Book");
 ```
 
-### Sincronizzare dati con il join
+### Synchronizing data with join
 
 ```java
 List<Item> items = List.of(
-    new Item("1", "Primo"),
-    new Item("2", "Secondo"),
-    new Item("3", "Terzo")
+    new Item("1", "First"),
+    new Item("2", "Second"),
+    new Item("3", "Third")
 );
 
-// Forma abbreviata: crea i mancanti, rimuove gli eccessi
+// Shorthand form: creates missing nodes, removes extras
 xml.sel("//item")
     .data(items)
     .join("item")
     .attrWith("name", (current, item) -> item.getName());
 
-// Forma con controllo completo
+// Full-control form
 xml.sel("//item")
     .data(items, Item::getId, node -> node.attr("id"))
     .join(JoinConfig.<Item>builder()
@@ -176,12 +176,12 @@ xml.sel("//item")
         .build());
 ```
 
-### Salvare
+### Saving
 
 ```java
 xml.writeTo(Path.of("./output.xml"));
 
-// Con opzioni
+// With options
 xml.writeTo(Path.of("./output.xml"), OutputOptions.builder()
     .indent(true)
     .indentAmount(2)
@@ -191,19 +191,19 @@ xml.writeTo(Path.of("./output.xml"), OutputOptions.builder()
 
 ---
 
-## Principi chiave
+## Key Principles
 
-- **Fluent chaining.** Ogni operazione restituisce un oggetto valido per continuare la catena.
-- **Mai eccezioni durante il chaining.** Selezioni vuote, XPath senza risultati, operazioni su insiemi vuoti — tutto è gestito silenziosamente come no-op.
-- **Tutto è una selezione.** `Node` estende `Sel`: un singolo nodo è una selezione di cardinalità 1 con metodi di navigazione DOM aggiuntivi.
-- **Due modalità chiare.** Senza `.data()` le operazioni sono immediate. Con `.data()` si entra in modalità dichiarativa (lazy) che si applica al `.join()`.
-- **Zero dipendenze.** Solo API standard della JVM.
+- **Fluent chaining.** Every operation returns a valid object to continue the chain.
+- **No exceptions during chaining.** Empty selections, XPath queries with no results, operations on empty sets — everything is handled silently as a no-op.
+- **Everything is a selection.** `Node` extends `Sel`: a single node is a selection of cardinality 1 with additional DOM navigation methods.
+- **Two clear modes.** Without `.data()`, operations are immediate. With `.data()`, you enter a declarative (lazy) mode that resolves at `.join()`.
+- **Zero dependencies.** Only standard JVM APIs.
 
 ---
 
-## Casi d'uso
+## Use Cases
 
-### Trasformazione batch
+### Batch transformation
 
 ```java
 XML xml = XML.from(Path.of("./report.xml"));
@@ -213,29 +213,29 @@ xml.sel("//field[@type='date']")
 xml.writeTo(Path.of("./report-fixed.xml"));
 ```
 
-### Inserimento di contenuto
+### Content insertion
 
 ```java
-// Aggiunge un elemento prima di ogni sezione
+// Insert an element before every section
 xml.sel("//section")
     .before(XML.parse("<hr/>"))
     .attr("class", "separated");
 
-// Sostituisce elementi obsoleti
+// Replace obsolete elements
 xml.sel("//old-tag")
     .replace(XML.parse("<new-tag/>"))
     .attr("migrated", "true");
 ```
 
-### Combinazione di frammenti XML
+### Combining XML fragments
 
 ```java
 XML main = XML.from(Path.of("./main.xml"));
-XML extra = XML.parse("<note priority='high'>Urgente</note>");
+XML extra = XML.parse("<note priority='high'>Urgent</note>");
 main.sel("//task").first().append(extra);
 ```
 
-### Generazione da dati
+### Generating from data
 
 ```java
 XML xml = XML.create("people");
@@ -253,10 +253,9 @@ xml.sel("//person")
 
 ---
 
-## Documentazione
+## Documentation
 
-- **[DESIGN.md](./docs/DESIGN.md)** — Visione, principi e decisioni progettuali con le loro motivazioni.
-- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — Struttura interna, pattern implementativi, dettagli tecnici.
-- **[API.md](./docs/API.md)** — Reference completo dell'API pubblica.
-- **[TESTING.md](./docs/TESTING.md)** — Strategia di testing e struttura dei test.
-
+- **[DESIGN.md](./docs/DESIGN.md)** — Vision, principles, and design decisions with their rationale.
+- **[ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — Internal structure, implementation patterns, and technical details.
+- **[API.md](./docs/API.md)** — Complete public API reference.
+- **[TESTING.md](./docs/TESTING.md)** — Testing strategy and test structure.

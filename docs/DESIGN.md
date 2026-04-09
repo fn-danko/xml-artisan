@@ -1,188 +1,187 @@
 # XML Artisan — Design Document
 
-> Visione, principi e decisioni progettuali della libreria.
+> Vision, principles, and design decisions behind the library.
 
-**Versione:** 0.4
-
----
-
-## Indice
-
-1. [Obiettivi e motivazioni](#obiettivi-e-motivazioni)
-2. [Ispirazioni](#ispirazioni)
-3. [Principi di design](#principi-di-design)
-4. [Decisioni chiave e motivazioni](#decisioni-chiave-e-motivazioni)
-5. [Confronto con l'esistente](#confronto-con-lesistente)
+**Version:** 0.4
 
 ---
 
-## Obiettivi e motivazioni
+## Table of Contents
 
-L'API standard Java per la manipolazione XML (`javax.xml.parsers`, `org.w3c.dom`, `javax.xml.xpath`) è potente ma estremamente verbosa. Operazioni comuni come selezionare nodi, modificare attributi o sincronizzare dati con una struttura XML richiedono decine di righe di codice boilerplate.
-
-XML Artisan si propone di:
-
-- Offrire un'API fluent e concisa per lettura, modifica e creazione di documenti XML.
-- Introdurre il concetto di **selezioni** ispirate a D3.js, con supporto per data binding tramite il pattern **join** (enter/update/exit).
-- Appoggiarsi interamente sulle API standard della JVM (DOM, XPath) senza dipendenze esterne.
-- Distinguere chiaramente tra **manipolazione diretta** (immediata, mutabile) e **sincronizzazione dati** (lazy, dichiarativa).
-- Non rompere mai il flusso del chaining: selezioni vuote, risultati assenti e operazioni su insiemi vuoti sono gestiti silenziosamente come no-op.
+1. [Goals and Motivations](#goals-and-motivations)
+2. [Inspirations](#inspirations)
+3. [Design Principles](#design-principles)
+4. [Key Decisions and Rationale](#key-decisions-and-rationale)
+5. [Comparison with Existing Solutions](#comparison-with-existing-solutions)
 
 ---
 
-## Ispirazioni
+## Goals and Motivations
 
-### D3.js — Il sistema di selezioni
+The standard Java API for XML manipulation (`javax.xml.parsers`, `org.w3c.dom`, `javax.xml.xpath`) is powerful but extremely verbose. Common operations like selecting nodes, modifying attributes, or synchronizing data with an XML structure require dozens of lines of boilerplate.
 
-Il cuore di XML Artisan è ispirato al [sistema di selezioni di D3.js](https://d3js.org/d3-selection) e in particolare al [join pattern](https://d3js.org/d3-selection/joining). D3 ha dimostrato che il modello selezione + data join è estremamente potente per sincronizzare dati con una struttura a nodi. XML Artisan porta questo paradigma nel mondo Java/XML.
+XML Artisan sets out to:
 
-Le lezioni chiave prese da D3:
-
-- **Il pattern join unificato** (`.join()`) come evoluzione del pattern esplicito enter/update/exit separati. D3 stesso si è evoluto verso `.join()` come API primaria perché più semplice e meno error-prone.
-- **La merge di enter e update** come risultato del join, che permette di applicare operazioni comuni a entrambi i gruppi.
-- **L'ordine di inserimento posizionale** nell'enter: i nuovi nodi vengono inseriti nella posizione corrispondente ai dati, non in coda al parent.
-- **Parent multipli gestiti per gruppo**: se la selezione contiene nodi con parent diversi, il join opera per ciascun parent separatamente.
-
-### jQuery — Il chaining fluent
-
-L'API fluent con chaining e il metodo `.end()` per risalire alle selezioni precedenti sono ispirati a jQuery. Anche la filosofia di operare su insiemi di nodi con operazioni batch (`.attr()`, `.text()` applicati a tutta la selezione) viene da questo modello.
+- Provide a fluent, concise API for reading, modifying, and creating XML documents.
+- Introduce the concept of **selections** inspired by D3.js, with support for data binding through the **join** pattern (enter/update/exit).
+- Rely entirely on standard JVM APIs (DOM, XPath) with no external dependencies.
+- Draw a clear line between **direct manipulation** (immediate, mutable) and **data synchronization** (lazy, declarative).
+- Never break the flow of chaining: empty selections, missing results, and operations on empty sets are handled silently as no-ops.
 
 ---
 
-## Principi di design
+## Inspirations
 
-### 1. Due modalità, un unico entry point
+### D3.js — The selection system
 
-L'oggetto `XML` è il punto di partenza. La presenza o assenza di `.data()` determina se si opera in modalità diretta (immediata) o binding (lazy/dichiarativa). L'utente non deve scegliere una "modalità" prima di iniziare — il suo bisogno lo guida naturalmente.
+At the heart of XML Artisan lies the [D3.js selection system](https://d3js.org/d3-selection), and specifically the [join pattern](https://d3js.org/d3-selection/joining). D3 demonstrated that the selection + data join model is remarkably powerful for synchronizing data with a node structure. XML Artisan brings this paradigm to the Java/XML world.
 
-### 2. Diretto = immediato
+Key lessons taken from D3:
 
-Le operazioni su selezioni senza data binding agiscono immediatamente sul DOM sottostante. `.attr("class", "active")` modifica il DOM nel momento in cui viene chiamato. Questo è il comportamento intuitivo per chi vuole fare manipolazioni puntuali.
+- **The unified join pattern** (`.join()`) as an evolution of the earlier explicit enter/update/exit split. D3 itself evolved toward `.join()` as the primary API because it is simpler and less error-prone.
+- **Merging enter and update** as the result of the join, allowing common operations to be applied to both groups.
+- **Positional insertion order** during enter: new nodes are inserted at the position corresponding to their data, not appended at the end of the parent.
+- **Per-parent grouping**: if the selection contains nodes with different parents, the join operates on each parent group independently.
+
+### jQuery — Fluent chaining
+
+The fluent chaining API and the `.end()` method for backtracking to previous selections are inspired by jQuery. The philosophy of operating on sets of nodes with batch operations (`.attr()`, `.text()` applied across the entire selection) also comes from this model.
+
+---
+
+## Design Principles
+
+### 1. Two modes, one entry point
+
+The `XML` object is the starting point. Whether `.data()` is called or not determines whether you are in direct mode (immediate) or binding mode (lazy/declarative). The user does not have to choose a "mode" up front — their intent guides them naturally.
+
+### 2. Direct = immediate
+
+Operations on selections without data binding act on the underlying DOM immediately. `.attr("class", "active")` modifies the DOM the moment it is called. This is the intuitive behavior for anyone doing point modifications.
 
 ### 3. Binding = lazy
 
-Dopo `.data()`, si entra in un mondo dichiarativo. Le operazioni vengono accumulate e applicate solo con `.join()`. Questo è necessario perché il data join ha bisogno di conoscere il quadro completo (enter, update, exit) prima di agire sul DOM.
+After `.data()`, you enter a declarative world. Operations are accumulated and applied only when `.join()` is called. This is necessary because the data join needs the full picture (enter, update, exit) before it can touch the DOM.
 
-### 4. Tutto è una selezione
+### 4. Everything is a selection
 
-`Node` è una specializzazione di `Sel` (selezione di cardinalità 1). Questo significa che un singolo nodo supporta tutte le operazioni di selezione e la libreria lavora internamente sempre con selezioni. La conseguenza pratica è che si passa fluidamente tra operazioni su singoli nodi e operazioni batch.
+`Node` is a specialization of `Sel` (a selection of cardinality 1). This means a single node supports all selection operations, and the library works internally with selections throughout. The practical consequence is that you move fluidly between single-node operations and batch operations.
 
-### 5. Tipi diversi per semantiche diverse
+### 5. Different types for different semantics
 
-`Sel`, `BoundSel<T>`, `JoinedSel<T>`, `JoinConfig<T>` sono tipi distinti. Il compilatore guida l'utente: non si può chiamare `.join()` senza prima aver chiamato `.data()`, non si può chiamare `.attrWith()` su un `Sel` che non proviene da un join. Gli errori si scoprono a compile-time, non a runtime.
+`Sel`, `BoundSel<T>`, `JoinedSel<T>`, and `JoinConfig<T>` are distinct types. The compiler guides the user: you cannot call `.join()` without first calling `.data()`, and you cannot call `.attrWith()` on a `Sel` that did not come from a join. Errors surface at compile time, not at runtime.
 
-### 6. XPath contestuale
+### 6. Contextual XPath
 
-Le sotto-selezioni (`.sel()` chiamato su un `Sel`) valutano l'espressione relativamente ai nodi della selezione padre. Le espressioni `//` vengono trattate automaticamente come `.//` nelle sotto-selezioni per evitare il comportamento contro-intuitivo di XPath standard.
+Sub-selections (`.sel()` called on a `Sel`) evaluate the expression relative to the nodes of the parent selection. Expressions starting with `//` are automatically treated as `.//` in sub-selections, avoiding the counter-intuitive behavior of standard XPath.
 
-### 7. Zero dipendenze esterne
+### 7. Zero external dependencies
 
-Solo API standard della JVM (`javax.xml.parsers`, `org.w3c.dom`, `javax.xml.xpath`, `javax.xml.transform`). Nessuna dipendenza transitiva.
+Only standard JVM APIs (`javax.xml.parsers`, `org.w3c.dom`, `javax.xml.xpath`, `javax.xml.transform`). No transitive dependencies.
 
-### 8. Mai rompere la catena
+### 8. Never break the chain
 
-Nessuna operazione lancia eccezioni durante il chaining. Selezioni vuote, XPath senza risultati, operazioni su insiemi vuoti — tutto è gestito come no-op con valori sensibili (stringhe vuote, selezioni vuote, Node vuoti). Le uniche eccezioni sono per errori di programmazione non recuperabili, con tipi specifici: `ParseException` (XML malformato), `XPathException` (XPath malformato), `InvalidNameException` (nomi non validi) — tutte sottoclassi di `XmlArtisanException extends RuntimeException`.
+No operation throws exceptions during chaining. Empty selections, XPath queries with no results, operations on empty sets — everything is handled as a no-op with sensible defaults (empty strings, empty selections, empty Nodes). The only exceptions are for non-recoverable programming errors, with specific types: `ParseException` (malformed XML), `XPathException` (malformed XPath), `InvalidNameException` (invalid names) — all subclasses of `XmlArtisanException extends RuntimeException`.
 
-### 9. Nomi corti e intuitivi
+### 9. Short, intuitive names
 
-L'API privilegia nomi brevi e leggibili: `sel`, `attr`, `text`, `before`, `after`, `end`, `first`, `last`. Nessun overhead verboso tipo `setAttribute` o `getTextContent`.
+The API favors brief, readable names: `sel`, `attr`, `text`, `before`, `after`, `end`, `first`, `last`. No verbose overhead like `setAttribute` or `getTextContent`.
 
 ---
 
-## Decisioni chiave e motivazioni
+## Key Decisions and Rationale
 
 ### `Node extends Sel`
 
-**Decisione:** `Node` è una sottoclasse di `Sel`, non un tipo separato.
+**Decision:** `Node` is a subclass of `Sel`, not a separate type.
 
-**Motivazione:** Se "tutto è una selezione", un singolo nodo è semplicemente una selezione di cardinalità 1. Questo elimina la necessità di API duplicate e permette transizioni fluide: da un `Node` si può iniziare una nuova selezione con `.sel()`, da una selezione si può estrarre un `Node` con `.first()`. A livello implementativo la libreria lavora sempre con selezioni.
+**Rationale:** If "everything is a selection," then a single node is simply a selection of cardinality 1. This eliminates the need for duplicate APIs and enables fluid transitions: from a `Node` you can start a new selection with `.sel()`, from a selection you can extract a `Node` with `.first()`. Under the hood, the library always works with selections.
 
-**Alternativa scartata:** Tipi completamente separati `Node` e `Sel` con metodi di conversione espliciti. Scartata perché aggiunge complessità senza benefici.
+**Rejected alternative:** Completely separate `Node` and `Sel` types with explicit conversion methods. Rejected because it adds complexity with no real benefit.
 
-### `.children()` restituisce `Sel`, non `List<Node>`
+### `.children()` returns `Sel`, not `List<Node>`
 
-**Decisione:** `node.children()` restituisce un `Sel` con i figli del nodo.
+**Decision:** `node.children()` returns a `Sel` containing the node's children.
 
-**Motivazione:** Coerente con il principio "tutto è una selezione". Permette chaining immediato: `node.children().attr("visible", "true")`. Se serve una lista, `.list()` è disponibile su qualsiasi `Sel` (come `.stream()`).
+**Rationale:** Consistent with the "everything is a selection" principle. Enables immediate chaining: `node.children().attr("visible", "true")`. If a list is needed, `.list()` is available on any `Sel` (just like `.stream()`).
 
-### Metodi `with*` per accesso ai dati post-join
+### `with*` methods for post-join data access
 
-**Decisione:** `JoinedSel<T>` aggiunge `.attrWith()`, `.textWith()`, `.eachWith()` con il suffisso `With` invece di sovraccaricare `.attr()` e `.text()`.
+**Decision:** `JoinedSel<T>` adds `.attrWith()`, `.textWith()`, `.eachWith()` with the `With` suffix rather than overloading `.attr()` and `.text()`.
 
-**Motivazione:** Elimina ambiguità del compilatore Java. Quando `T = String`, il compilatore potrebbe confondere `Function<String, String>` con `BiFunction<String, String, String>` negli overload di `.attr()`. Il suffisso `With` rende anche immediatamente visibile nel codice quando si sta accedendo al dato e quando no.
+**Rationale:** Eliminates Java compiler ambiguity. When `T = String`, the compiler could confuse `Function<String, String>` with `BiFunction<String, String, String>` in `.attr()` overloads. The `With` suffix also makes it immediately visible in code when you are accessing the bound datum and when you are not.
 
-**Alternativa scartata:** Overload basati sul numero di parametri della lambda (opzione C). Funziona nella maggioranza dei casi ma fallisce con method reference ambigue. Troppo fragile.
+**Rejected alternative:** Overloads based on the number of lambda parameters (option C). Works in most cases but fails with ambiguous method references. Too fragile.
 
-### `.sel()` su `JoinedSel` restituisce `Sel` (perde il binding)
+### `.sel()` on `JoinedSel` returns `Sel` (loses the binding)
 
-**Decisione:** Una sotto-selezione dopo un join perde il binding dati e restituisce un `Sel` normale.
+**Decision:** A sub-selection after a join loses the data binding and returns a plain `Sel`.
 
-**Motivazione:** Il dato è associato ai nodi del join, non ai loro discendenti. Non avrebbe senso propagare un dato di tipo `Person` ai figli `<address>` o `<email>` di un nodo `<person>`. Semanticamente `.sel()` su `JoinedSel` equivale a `.toSel().sel(...)`.
+**Rationale:** The datum is associated with the join's nodes, not their descendants. It would make no sense to propagate a `Person` datum to the `<address>` or `<email>` children of a `<person>` node. Semantically, `.sel()` on `JoinedSel` is equivalent to `.toSel().sel(...)`.
 
-### `append`/`before`/`after` hanno semantica diversa su `Node` vs `Sel`
+### `append`/`before`/`after` have different semantics on `Node` vs `Sel`
 
-**Decisione:** Su `Node` restituiscono il **nuovo nodo** (per costruzione di strutture). Su `Sel` restituiscono la **selezione originale** (side-effect batch). `replace()` è l'eccezione su `Sel`: restituisce i nuovi nodi perché gli originali non esistono più.
+**Decision:** On `Node`, they return the **new node** (for building structures). On `Sel`, they return the **original selection** (batch side-effect). `replace()` is the exception on `Sel`: it returns the new nodes because the originals no longer exist.
 
-**Motivazione:** Pattern d'uso diversi richiedono ritorni diversi. `Node` è usato per costruzione in profondità (`node.append("a").append("b").text("...")`). `Sel` è usato per modifiche batch dove il focus resta sulla selezione corrente. La coerenza è mantenuta dal fatto che `Node extends Sel` e il compilatore risolve al tipo più specifico.
+**Rationale:** Different usage patterns call for different return values. `Node` is used for deep construction (`node.append("a").append("b").text("...")`). `Sel` is used for batch modifications where the focus stays on the current selection. Consistency is maintained by the fact that `Node extends Sel` and the compiler resolves to the most specific type.
 
-### JoinConfig con builder e `.defaults()`
+### JoinConfig with builder and `.defaults()`
 
-**Decisione:** La forma completa del join usa `JoinConfig<T>` con builder pattern, che supporta `.defaults("tag")` per attivare il comportamento della shorthand come base.
+**Decision:** The full form of the join uses `JoinConfig<T>` with a builder pattern, which supports `.defaults("tag")` to activate the shorthand behavior as a baseline.
 
-**Motivazione:** Risolve tre problemi. Primo, rende esplicita la differenza tra "non specificato" (non fare nulla) e `.defaults()` (comportamento standard: enter=append, update=identity, exit=remove). Secondo, permette di partire dai default e sovrascrivere solo ciò che serve. Terzo, passare `null` esplicito per un handler ha un significato diverso da non specificarlo: `null` = "non fare nulla per questo gruppo", non specificato senza `.defaults()` = "non fare nulla", non specificato con `.defaults()` = "usa il default".
+**Rationale:** This solves three problems. First, it makes the difference between "not specified" (do nothing) and `.defaults()` (standard behavior: enter=append, update=identity, exit=remove) explicit. Second, it lets you start from the defaults and override only what you need. Third, passing an explicit `null` for a handler has a different meaning from not specifying it: `null` = "do nothing for this group"; unspecified without `.defaults()` = "do nothing"; unspecified with `.defaults()` = "use the default."
 
-**Alternativa scartata:** Tre lambda separate come parametri di `.join()`. Meno espressiva, non supporta il pattern defaults-con-override, non distingue tra null e non-specificato.
+**Rejected alternative:** Three separate lambdas as `.join()` parameters. Less expressive, does not support the defaults-with-override pattern, and cannot distinguish between null and unspecified.
 
-### Resilienza: Null Object Pattern ovunque
+### Resilience: Null Object Pattern everywhere
 
-**Decisione:** `Node` vuoto, `Sel` vuoto, stringhe vuote — mai `null`, mai eccezioni durante il chaining.
+**Decision:** Empty `Node`, empty `Sel`, empty strings — never `null`, never exceptions during chaining.
 
-**Motivazione:** La catena non si deve mai rompere. Un utente che scrive `xml.sel("//maybe-exists").first().children().attr("x", "y")` non deve preoccuparsi di NullPointerException a nessun livello. Ogni operazione su un oggetto vuoto è un no-op che restituisce un altro oggetto vuoto.
+**Rationale:** The chain must never break. A user who writes `xml.sel("//maybe-exists").first().children().attr("x", "y")` should not have to worry about NullPointerException at any level. Every operation on an empty object is a no-op that returns another empty object.
 
-**Alternativa scartata:** `Optional<Node>` per `.first()` e `.last()`. Più idiomatico in Java moderno ma rompe il chaining fluent e obbliga l'utente a gestire il caso vuoto esplicitamente.
+**Rejected alternative:** `Optional<Node>` for `.first()` and `.last()`. More idiomatic in modern Java but breaks fluent chaining and forces the user to handle the empty case explicitly.
 
-### XPath: rewrite automatico `//` → `.//` nelle sotto-selezioni
+### XPath: automatic `//` → `.//` rewrite in sub-selections
 
-**Decisione:** Nelle sotto-selezioni, le espressioni che iniziano con `//` vengono automaticamente trattate come `.//`.
+**Decision:** In sub-selections, expressions starting with `//` are automatically treated as `.//`.
 
-**Motivazione:** In XPath standard, `//a` cerca dalla radice del documento indipendentemente dal nodo contesto. Questo è contro-intuitivo quando l'utente scrive `xml.sel("//div").sel("//a")` aspettandosi di cercare gli `<a>` dentro i `<div>`. L'API Java XPath (`xpath.evaluate(expression, contextNode)`) supporta nativamente i nodi contesto, ma l'espressione deve essere relativa (`.//a`). Il rewrite automatico evita questa trappola.
+**Rationale:** In standard XPath, `//a` searches from the document root regardless of the context node. This is counter-intuitive when a user writes `xml.sel("//div").sel("//a")` expecting to find the `<a>` elements inside the `<div>` elements. The Java XPath API (`xpath.evaluate(expression, contextNode)`) natively supports context nodes, but the expression must be relative (`.//a`). The automatic rewrite avoids this pitfall.
 
-### `text()` lavora sul testo diretto, non ricorsivo
+### `text()` operates on direct text, not recursive
 
-**Decisione:** `text()` legge/scrive solo i nodi TEXT/CDATA figli diretti. `deepText()` fornisce la lettura ricorsiva (ex comportamento di `text()`).
+**Decision:** `text()` reads/writes only the direct TEXT/CDATA child nodes. `deepText()` provides recursive reading (the former behavior of `text()`).
 
-**Motivazione:** L'XML di produzione contiene spesso mixed content: `<p>Hello <b>world</b> today</p>`. Il caso d'uso più comune è leggere/scrivere il testo diretto di un nodo, non quello ricorsivo. Con la vecchia semantica (`getTextContent()`), `text()` restituiva `"Hello world today"` ma `text("New")` distruggeva l'elemento `<b>`. La nuova semantica rende `text()` coerente tra lettura e scrittura: entrambe operano sul testo diretto, preservando gli elementi figli. `normalizeText()` unifica i nodi testo frammentati. `coalesceText()` è la variante distruttiva per quando serve appiattire tutto.
+**Rationale:** Production XML often contains mixed content: `<p>Hello <b>world</b> today</p>`. The most common use case is reading/writing a node's direct text, not its recursive text. With the old semantics (`getTextContent()`), `text()` would return `"Hello world today"` but `text("New")` would destroy the `<b>` element. The new semantics make `text()` consistent between reads and writes: both operate on direct text, preserving child elements. `normalizeText()` merges fragmented text nodes. `coalesceText()` is the destructive variant for when you actually need to flatten everything.
 
-**Alternativa scartata:** Mantenere `text()` ricorsivo e aggiungere `directText()`. Scartata perché il caso d'uso diretto è più frequente e la semantica ricorsiva è sorprendente in scrittura (distrugge figli).
+**Rejected alternative:** Keep `text()` recursive and add `directText()`. Rejected because the direct use case is more common and the recursive semantics are surprising in write mode (they destroy children).
 
-### `content(XML)` importa il root, `content(String)` i figli del wrapper
+### `content(XML)` imports the root, `content(String)` imports the wrapper's children
 
-**Decisione:** `content(XML)` importa il root element del frammento come singolo figlio. `content(String)` avvolge la stringa in un wrapper sintetico `<_>...</_>`, parsa, e importa i figli del wrapper (supportando mixed content senza root singolo).
+**Decision:** `content(XML)` imports the root element of the fragment as a single child. `content(String)` wraps the string in a synthetic `<_>...</_>` element, parses it, and imports the wrapper's children (supporting mixed content without a single root).
 
-**Motivazione:** Le due varianti coprono casi d'uso diversi. `content(XML)` è per quando si ha già un `XML` parsato e si vuole inserire il suo root element. `content(String)` è per sostituire il contenuto con mixed content arbitrario (es. `<b>bold</b> text`) che non ha un singolo root. Il wrapper sintetico è trasparente all'utente.
+**Rationale:** The two variants cover different use cases. `content(XML)` is for when you already have a parsed `XML` and want to insert its root element. `content(String)` is for replacing content with arbitrary mixed content (e.g., `<b>bold</b> text`) that has no single root. The synthetic wrapper is transparent to the user.
 
-### `cdata(String)` — solo in scrittura
+### `cdata(String)` — write only
 
-**Decisione:** `cdata(String)` crea un CDATA_SECTION_NODE. Non esiste `cdata()` in lettura — `text()` già legge sia TEXT che CDATA.
+**Decision:** `cdata(String)` creates a CDATA_SECTION_NODE. There is no `cdata()` for reading — `text()` already reads both TEXT and CDATA.
 
-**Motivazione:** La distinzione TEXT vs CDATA è rilevante solo in serializzazione (il contenuto è identico). Un metodo `cdata()` in lettura sarebbe ridondante con `text()`. L'utente sceglie CDATA in scrittura quando il contenuto contiene caratteri speciali XML (HTML, script, etc.) che vuole preservare senza entity encoding.
+**Rationale:** The distinction between TEXT and CDATA is only relevant in serialization (the content is identical). A `cdata()` reader would be redundant with `text()`. The user chooses CDATA for writing when the content contains XML special characters (HTML, scripts, etc.) that should be preserved without entity encoding.
 
-### Thread safety: nessuna garanzia
+### Thread safety: no guarantees
 
-**Decisione:** Nessun tipo della libreria è thread-safe.
+**Decision:** No type in the library is thread-safe.
 
-**Motivazione:** Il DOM API sottostante non è thread-safe. Aggiungere sincronizzazione introdurrebbe overhead significativo per un caso d'uso minoritario. L'uso tipico è pipeline di trasformazione in un singolo thread.
+**Rationale:** The underlying DOM API is not thread-safe. Adding synchronization would introduce significant overhead for a minority use case. The typical usage pattern is a transformation pipeline on a single thread.
 
 ---
 
-## Confronto con l'esistente
+## Comparison with Existing Solutions
 
-| Libreria | Stato | Approccio | Data binding | Selezioni D3 |
-|----------|-------|-----------|--------------|---------------|
-| DOM API (JVM) | Attiva | Verboso, basso livello | No | No |
-| jOOX | Inattiva (~2 anni) | Fluent, stile jQuery | No | No |
-| dom4j | Attiva | API propria, non fluent | No | No |
-| **XML Artisan** | — | Fluent + selezioni D3 | **Sì** | **Sì** |
+| Library | Status | Approach | Data binding | D3 selections |
+|---------|--------|----------|--------------|---------------|
+| DOM API (JVM) | Active | Verbose, low-level | No | No |
+| jOOX | Inactive (~2 years) | Fluent, jQuery-style | No | No |
+| dom4j | Active | Custom API, not fluent | No | No |
+| **XML Artisan** | — | Fluent + D3 selections | **Yes** | **Yes** |
 
-Il differenziatore principale rispetto a tutte le alternative è il **data binding con join pattern**. jOOX offre un'API fluent simile ma non supporta la sincronizzazione dati-nodi. dom4j ha la sua API di navigazione ma non è fluent. Nessuna libreria Java esistente porta il paradigma D3 nel mondo XML.
-
+The main differentiator against all alternatives is the **data binding with join pattern**. jOOX offers a similar fluent API but does not support data-to-node synchronization. dom4j has its own navigation API but is not fluent. No existing Java library brings the D3 paradigm to the XML world.

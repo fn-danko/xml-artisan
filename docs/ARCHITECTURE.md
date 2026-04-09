@@ -1,48 +1,48 @@
-# XML Artisan — Architettura
+# XML Artisan — Architecture
 
-> Struttura interna, pattern implementativi e dettagli tecnici per chi contribuisce al codice.
-
----
-
-## Indice
-
-1. [Panoramica dell'architettura](#panoramica-dellarchitettura)
-2. [Gerarchia dei tipi](#gerarchia-dei-tipi)
-3. [Dettaglio dei tipi pubblici](#dettaglio-dei-tipi-pubblici)
-4. [Pattern implementativi](#pattern-implementativi)
-5. [Gestione XPath](#gestione-xpath)
-6. [Meccanica del join](#meccanica-del-join)
-7. [Resilienza interna](#resilienza-interna)
-8. [Thread safety](#thread-safety)
-9. [Dipendenze JVM](#dipendenze-jvm)
+> Internal structure, implementation patterns, and technical details for contributors.
 
 ---
 
-## Panoramica dell'architettura
+## Table of Contents
 
-XML Artisan è un layer sottile sopra le API standard DOM e XPath della JVM. Non reimplementa il parsing né la gestione del DOM — usa `javax.xml.parsers.DocumentBuilder` per il parsing e `org.w3c.dom` come struttura dati sottostante.
+1. [Architecture Overview](#architecture-overview)
+2. [Type Hierarchy](#type-hierarchy)
+3. [Public Type Details](#public-type-details)
+4. [Implementation Patterns](#implementation-patterns)
+5. [XPath Management](#xpath-management)
+6. [Join Mechanics](#join-mechanics)
+7. [Internal Resilience](#internal-resilience)
+8. [Thread Safety](#thread-safety)
+9. [JVM Dependencies](#jvm-dependencies)
 
-L'architettura è composta da:
+---
 
-- **Layer di wrapping DOM** — `XML`, `Sel`, `Node` avvolgono il DOM standard offrendo un'interfaccia fluent.
-- **Layer XPath** — Gestione centralizzata delle espressioni XPath con supporto per contesti relativi e namespace.
-- **Layer di data binding** — `BoundSel<T>`, `JoinedSel<T>`, `JoinConfig<T>` implementano il pattern join sopra le selezioni.
+## Architecture Overview
+
+XML Artisan is a thin layer on top of the standard JVM DOM and XPath APIs. It does not reimplement parsing or DOM management — it uses `javax.xml.parsers.DocumentBuilder` for parsing and `org.w3c.dom` as the underlying data structure.
+
+The architecture is composed of:
+
+- **DOM wrapping layer** — `XML`, `Sel`, `Node` wrap the standard DOM behind a fluent interface.
+- **XPath layer** — Centralized XPath expression handling with support for relative contexts and namespaces.
+- **Data binding layer** — `BoundSel<T>`, `JoinedSel<T>`, `JoinConfig<T>` implement the join pattern on top of selections.
 
 ```
 ┌─────────────────────────────────────────────┐
-│              API Pubblica                    │
+│              Public API                      │
 │   XML, Sel, Node, BoundSel, JoinedSel       │
 ├─────────────────────────────────────────────┤
-│           Layer di Data Binding              │
+│           Data Binding Layer                 │
 │   JoinConfig, data join, merge              │
 ├─────────────────────────────────────────────┤
-│           Layer XPath                        │
+│           XPath Layer                        │
 │   Context node, rewrite //, namespace        │
 ├─────────────────────────────────────────────┤
-│           Layer di Wrapping DOM              │
-│   Wrapper attorno a org.w3c.dom              │
+│           DOM Wrapping Layer                 │
+│   Wrapper around org.w3c.dom                 │
 ├─────────────────────────────────────────────┤
-│           API Standard JVM                   │
+│           Standard JVM APIs                  │
 │   javax.xml.parsers, org.w3c.dom,            │
 │   javax.xml.xpath, javax.xml.transform       │
 └─────────────────────────────────────────────┘
@@ -50,28 +50,28 @@ L'architettura è composta da:
 
 ---
 
-## Gerarchia dei tipi
+## Type Hierarchy
 
-### Tipi pubblici
+### Public types
 
 ```
-XML                                             // entry point, wrappa un Document
+XML                                             // entry point, wraps a Document
  │
- ├── Sel                                        // selezione di N nodi, operazioni immediate
- │    └── Node extends Sel                      // selezione di 1 nodo + navigazione DOM
+ ├── Sel                                        // selection of N nodes, immediate operations
+ │    └── Node extends Sel                      // selection of 1 node + DOM navigation
  │
- ├── BoundSel<T>                                // selezione con dati associati, lazy
+ ├── BoundSel<T>                                // selection with associated data, lazy
  │
- ├── JoinedSel<T> extends Sel                   // post-join: merged enter+update, dato accessibile
+ ├── JoinedSel<T> extends Sel                   // post-join: merged enter+update, datum accessible
  │
- ├── JoinConfig<T>                              // configurazione join via builder
- │    └── JoinConfig.Builder<T>                 // builder per JoinConfig
+ ├── JoinConfig<T>                              // join configuration via builder
+ │    └── JoinConfig.Builder<T>                 // builder for JoinConfig
  │
- └── OutputOptions                              // opzioni di serializzazione
-      └── OutputOptions.Builder                 // builder per OutputOptions
+ └── OutputOptions                              // serialization options
+      └── OutputOptions.Builder                 // builder for OutputOptions
 ```
 
-### Relazioni tra tipi (flusso di transizione)
+### Relationships between types (transition flow)
 
 ```
 XML ──.sel(xpath)──→ Sel ──.data(list)──→ BoundSel<T> ──.join(...)──→ JoinedSel<T>
@@ -80,72 +80,72 @@ XML ──.sel(xpath)──→ Sel ──.data(list)──→ BoundSel<T> ──
                       │←──────────.sel(xpath)───────────────────────────────┘
                       │
                       ├──.first()/.last()──→ Node (extends Sel)
-                      ├──.end()──→ Sel (padre)
+                      ├──.end()──→ Sel (parent)
                       └──.stream()──→ Stream<Node>
 ```
 
 ---
 
-## Dettaglio dei tipi pubblici
+## Public Type Details
 
 ### `XML`
 
-Entry point della libreria. Wrappa un `org.w3c.dom.Document` e fornisce factory methods, lettura/scrittura puntuale, creazione di selezioni e serializzazione.
+Entry point of the library. Wraps an `org.w3c.dom.Document` and provides factory methods, point read/write, selection creation, and serialization.
 
 ```
 XML
  ├── // Factory methods (static)
- ├── XML.from(Path) → XML                          // parsing da file
- ├── XML.parse(String) → XML                       // parsing da stringa
- ├── XML.create(String rootTag) → XML               // documento vuoto con root
+ ├── XML.from(Path) → XML                          // parse from file
+ ├── XML.parse(String) → XML                       // parse from string
+ ├── XML.create(String rootTag) → XML               // empty document with root
  │
- ├── // Lettura e scrittura puntuale
- ├── .get(xpath) → String                           // "" se non trovato
- ├── .set(xpath, value) → void                      // no-op se non trovato
+ ├── // Point read and write
+ ├── .get(xpath) → String                           // "" if not found
+ ├── .set(xpath, value) → void                      // no-op if not found
  │
- ├── // Selezioni
- ├── .sel(xpath) → Sel                              // Sel vuoto se nessun match
+ ├── // Selections
+ ├── .sel(xpath) → Sel                              // empty Sel if no match
  │
  ├── // Text normalization
- ├── .normalizeText() → XML                          // ricorsivo su tutto il documento
+ ├── .normalizeText() → XML                          // recursive across entire document
  │
  ├── // Namespace
- ├── .namespace(prefix, uri) → XML                  // registra namespace per XPath
+ ├── .namespace(prefix, uri) → XML                  // register namespace for XPath
  │
- ├── // Serializzazione
- ├── .toString() → String                           // con dichiarazione XML
- ├── .toFragment() → String                         // senza dichiarazione
- └── .writeTo(Path, OutputOptions?) → void          // scrittura su file
+ ├── // Serialization
+ ├── .toString() → String                           // with XML declaration
+ ├── .toFragment() → String                         // without declaration
+ └── .writeTo(Path, OutputOptions?) → void          // write to file
 ```
 
-**Internamente** mantiene un riferimento a `org.w3c.dom.Document` e un'istanza condivisa di `javax.xml.xpath.XPath` con i namespace registrati.
+**Internally** holds a reference to `org.w3c.dom.Document` and a shared `javax.xml.xpath.XPath` instance with the registered namespaces.
 
 ### `Sel`
 
-Selezione di zero o più nodi. Tutte le operazioni di modifica sono immediate (side-effect sul DOM) e restituiscono `Sel` per il chaining.
+Selection of zero or more nodes. All modification operations are immediate (side-effects on the DOM) and return `Sel` for chaining.
 
 ```
 Sel
- ├── // Lettura (dal primo nodo)
- ├── .attr(name) → String                          // "" se vuoto o attributo assente
- ├── .text() → String                              // testo diretto (concatena TEXT/CDATA figli, no side-effect)
- ├── .deepText() → String                          // testo ricorsivo (getTextContent)
+ ├── // Reading (from first node)
+ ├── .attr(name) → String                          // "" if empty or attribute absent
+ ├── .text() → String                              // direct text (concatenates child TEXT/CDATA, no side-effect)
+ ├── .deepText() → String                          // recursive text (getTextContent)
  ├── .size() → int
  ├── .empty() → boolean
  │
- ├── // Modifica (immediata, restituisce la stessa Sel)
+ ├── // Modification (immediate, returns the same Sel)
  ├── .attr(name, value) → Sel
- ├── .attr(name, Function<String,String>) → Sel     // fn(valoreCorrente) → nuovo
- ├── .text(value) → Sel                             // normalizeText + testo diretto, preserva figli
+ ├── .attr(name, Function<String,String>) → Sel     // fn(currentValue) → new
+ ├── .text(value) → Sel                             // normalizeText + direct text, preserves children
  ├── .text(Function<String,String>) → Sel            // text() + fn + text(String)
- ├── .cdata(value) → Sel                             // come text(value) ma CDATA_SECTION_NODE
- ├── .content(XML) → Sel                             // rimpiazza tutti i figli con root del frammento
- ├── .content(String) → Sel                          // rimpiazza tutti i figli con mixed content parsato
- ├── .normalizeText() → Sel                          // unifica TEXT/CDATA diretti in uno, primo figlio
- ├── .coalesceText() → Sel                           // distruttivo: getTextContent → rimuove tutto → testo singolo
- ├── .remove() → Sel                                // ritorna selezione padre
+ ├── .cdata(value) → Sel                             // like text(value) but CDATA_SECTION_NODE
+ ├── .content(XML) → Sel                             // replaces all children with fragment root
+ ├── .content(String) → Sel                          // replaces all children with parsed mixed content
+ ├── .normalizeText() → Sel                          // merges direct TEXT/CDATA into one, first child
+ ├── .coalesceText() → Sel                           // destructive: getTextContent → remove all → single text
+ ├── .remove() → Sel                                // returns parent selection
  │
- ├── // Inserimento strutturale (side-effect, restituisce la stessa Sel)
+ ├── // Structural insertion (side-effect, returns the same Sel)
  ├── .append(tagName) → Sel
  ├── .append(XML) → Sel
  ├── .prepend(tagName) → Sel
@@ -154,43 +154,43 @@ Sel
  ├── .before(XML) → Sel
  ├── .after(tagName) → Sel
  ├── .after(XML) → Sel
- ├── .replace(XML) → Sel                            // ECCEZIONE: ritorna Sel con i nuovi nodi
+ ├── .replace(XML) → Sel                            // EXCEPTION: returns Sel with the new nodes
  │
- ├── // Navigazione
- ├── .sel(xpath) → Sel                              // sotto-selezione contestuale
- ├── .end() → Sel                                   // selezione padre (sé stessa se radice)
+ ├── // Navigation
+ ├── .sel(xpath) → Sel                              // contextual sub-selection
+ ├── .end() → Sel                                   // parent selection (self if root)
  │
  ├── // Data binding
- ├── .data(List<T>) → BoundSel<T>                   // posizionale
- ├── .data(List<T>, Function<T,K>, Function<Node,K>) → BoundSel<T>  // con key function
+ ├── .data(List<T>) → BoundSel<T>                   // positional
+ ├── .data(List<T>, Function<T,K>, Function<Node,K>) → BoundSel<T>  // with key function
  │
- ├── // Conversione e iterazione
+ ├── // Conversion and iteration
  ├── .stream() → Stream<Node>
  ├── .list() → List<Node>
- ├── .first() → Node                                // Node vuoto se selezione vuota
- ├── .last() → Node                                 // Node vuoto se selezione vuota
- ├── .order() → Sel                                  // riordina nel DOM
+ ├── .first() → Node                                // empty Node if selection is empty
+ ├── .last() → Node                                 // empty Node if selection is empty
+ ├── .order() → Sel                                  // reorders nodes in the DOM
  └── implements Iterable<Node>
 ```
 
-**Internamente** mantiene una `List<org.w3c.dom.Node>`, un riferimento al `Sel` padre (per `.end()`) e un riferimento all'`XML` di appartenenza (per accesso a XPath e Document).
+**Internally** holds a `List<org.w3c.dom.Node>`, a reference to the parent `Sel` (for `.end()`), and a reference to the owning `XML` (for access to XPath and Document).
 
-**Nota semantica sui metodi strutturali:** `append`/`prepend`/`before`/`after` su `Sel` restituiscono la selezione originale (l'inserimento è un side-effect). Il focus della catena resta sugli elementi selezionati. `replace` è l'eccezione: restituisce un `Sel` con i nuovi nodi perché gli originali non esistono più nel DOM.
+**Note on structural methods:** `append`/`prepend`/`before`/`after` on `Sel` return the original selection (the insertion is a side-effect). The chain's focus stays on the selected elements. `replace` is the exception: it returns a `Sel` with the new nodes because the originals no longer exist in the DOM.
 
 ### `Node extends Sel`
 
-Specializzazione per un singolo nodo. Eredita tutto da `Sel` e aggiunge navigazione DOM. I metodi strutturali hanno **semantica diversa** da `Sel`: restituiscono il nuovo nodo creato.
+Specialization for a single node. Inherits everything from `Sel` and adds DOM navigation. Structural methods have **different semantics** from `Sel`: they return the newly created node.
 
 ```
 Node extends Sel
- ├── (eredita tutto da Sel)
+ ├── (inherits everything from Sel)
  │
- ├── // Navigazione DOM
- ├── .children() → Sel                              // figli come selezione
- ├── .parent() → Node                               // Node vuoto se radice
- ├── .name() → String                               // nome tag, "" se vuoto
+ ├── // DOM navigation
+ ├── .children() → Sel                              // children as a selection
+ ├── .parent() → Node                               // empty Node if root
+ ├── .name() → String                               // tag name, "" if empty
  │
- ├── // Inserimento (ritorna il NUOVO nodo, diverso da Sel)
+ ├── // Insertion (returns the NEW node, unlike Sel)
  ├── .append(tagName) → Node
  ├── .append(XML) → Node
  ├── .prepend(tagName) → Node
@@ -200,279 +200,279 @@ Node extends Sel
  ├── .before(XML) → Node
  ├── .after(tagName) → Node
  ├── .after(XML) → Node
- ├── .replace(XML) → Node                           // ritorna il nuovo nodo
+ ├── .replace(XML) → Node                           // returns the new node
  │
- ├── // Accesso DOM sottostante
- └── .unwrap() → org.w3c.dom.Node                   // null se Node vuoto
+ ├── // Underlying DOM access
+ └── .unwrap() → org.w3c.dom.Node                   // null if empty Node
 ```
 
-**Decisione architetturale: ritorno diverso su Node vs Sel per metodi strutturali.**
+**Architectural decision: different return types on Node vs Sel for structural methods.**
 
-Il compilatore Java risolve al tipo più specifico: se l'oggetto è un `Node`, i metodi come `append()` restituiscono `Node`. Se l'oggetto è un `Sel`, restituiscono `Sel`. Questo è implementato tramite override con tipo di ritorno covariante.
+The Java compiler resolves to the most specific type: if the object is a `Node`, methods like `append()` return `Node`. If the object is a `Sel`, they return `Sel`. This is implemented via overrides with covariant return types.
 
-Su `Node` il ritorno del nuovo nodo permette costruzione in profondità:
+On `Node`, returning the new node enables deep construction:
 
 ```java
 node.append("chapter").attr("num", "1").append("title").text("Intro");
 ```
 
-Su `Sel` il ritorno della selezione originale permette modifiche batch:
+On `Sel`, returning the original selection enables batch modifications:
 
 ```java
 xml.sel("//item").append("status").attr("active", "true");
-// .attr() si applica a ogni <item>, non ai nuovi <status>
+// .attr() applies to each <item>, not to the new <status> elements
 ```
 
 ### `BoundSel<T>`
 
-Selezione con dati associati, in attesa del join. Tipo transitorio.
+Selection with associated data, awaiting the join. Transitional type.
 
 ```
 BoundSel<T>
  ├── .join(String tagName) → JoinedSel<T>               // shorthand
- └── .join(JoinConfig<T>) → JoinedSel<T>                // configurazione esplicita
+ └── .join(JoinConfig<T>) → JoinedSel<T>                // explicit configuration
 ```
 
-**Internamente** mantiene la lista di dati, la key function (opzionale), la selezione originale e il riferimento al parent per l'enter.
+**Internally** holds the data list, the key function (optional), the original selection, and the reference to the parent for the enter phase.
 
 ### `JoinConfig<T>`
 
-Configurazione del join tramite builder. Definisce il comportamento per enter, update e exit.
+Join configuration via builder. Defines the behavior for enter, update, and exit.
 
 ```
 JoinConfig<T>
  └── JoinConfig.builder() → Builder<T>
       ├── .defaults(String tagName) → Builder<T>
-      ├── .enter(BiFunction<Node, T, Node>) → Builder<T>     // (parent, dato) → nodo creato
-      ├── .update(BiFunction<Node, T, Node>) → Builder<T>    // (nodo, dato) → nodo
-      ├── .exit(Consumer<Node>) → Builder<T>                  // (nodo) → void
+      ├── .enter(BiFunction<Node, T, Node>) → Builder<T>     // (parent, datum) → created node
+      ├── .update(BiFunction<Node, T, Node>) → Builder<T>    // (node, datum) → node
+      ├── .exit(Consumer<Node>) → Builder<T>                  // (node) → void
       └── .build() → JoinConfig<T>
 ```
 
-**Semantica interna dei valori nel builder:**
+**Internal value semantics in the builder:**
 
-Il builder traccia per ciascun handler tre stati interni: *default* (impostato da `.defaults()`), *custom* (impostato da `.enter()`/`.update()`/`.exit()` con valore non-null), *null esplicito* (impostato con `null`).
+The builder tracks three internal states for each handler: *default* (set by `.defaults()`), *custom* (set by `.enter()`/`.update()`/`.exit()` with a non-null value), *explicit null* (set with `null`).
 
-| Stato | enter | update | exit |
+| State | enter | update | exit |
 |-------|-------|--------|------|
-| **Shorthand** `.join("tag")` | Appende nodo con quel tag | Identity | Rimuove il nodo |
-| **`.defaults("tag")`** | Appende nodo con quel tag | Identity | Rimuove il nodo |
-| **Handler custom** | Esegue l'handler | Esegue l'handler | Esegue l'handler |
-| **`null` esplicito** | Ignora (nessun nodo creato) | Identity | Ignora (nodo resta) |
-| **Non specificato (senza `.defaults()`)** | Ignora (nessun nodo creato) | Identity | Ignora (nodo resta) |
+| **Shorthand** `.join("tag")` | Appends a node with that tag | Identity | Removes the node |
+| **`.defaults("tag")`** | Appends a node with that tag | Identity | Removes the node |
+| **Custom handler** | Executes the handler | Executes the handler | Executes the handler |
+| **Explicit `null`** | Skipped (no node created) | Identity | Skipped (node remains) |
+| **Unspecified (without `.defaults()`)** | Skipped (no node created) | Identity | Skipped (node remains) |
 
-La chiave: `.defaults("tag")` imposta i tre handler ai valori della shorthand. Un successivo `.update(handler)` sovrascrive solo update, lasciando enter e exit ai default. Un successivo `.exit(null)` disattiva exit esplicitamente (l'handler è null, non "non specificato").
+The key insight: `.defaults("tag")` sets all three handlers to the shorthand values. A subsequent `.update(handler)` overrides only update, leaving enter and exit at their defaults. A subsequent `.exit(null)` explicitly disables exit (the handler is null, not "unspecified").
 
 ### `JoinedSel<T> extends Sel`
 
-Risultato del join: contiene i nodi merged (enter + update) con il dato associato.
+Result of the join: contains the merged nodes (enter + update) with the associated datum.
 
 ```
 JoinedSel<T> extends Sel
- ├── (eredita tutto da Sel)
+ ├── (inherits everything from Sel)
  │
- ├── // Operazioni con accesso al dato
+ ├── // Operations with datum access
  ├── .attrWith(String name, BiFunction<String, T, String>) → JoinedSel<T>
  ├── .textWith(Function<T, String>) → JoinedSel<T>
  ├── .cdataWith(Function<T, String>) → JoinedSel<T>
  ├── .eachWith(BiConsumer<Node, T>) → JoinedSel<T>
  │
- ├── // Transizioni (perdono il binding)
- ├── .sel(xpath) → Sel                              // sotto-selezione senza dato
- ├── .toSel() → Sel                                 // abbandono esplicito del binding
+ ├── // Transitions (lose the binding)
+ ├── .sel(xpath) → Sel                              // sub-selection without datum
+ ├── .toSel() → Sel                                 // explicit binding drop
  │
- ├── // Ordinamento
+ ├── // Ordering
  └── .order() → JoinedSel<T>
 ```
 
-**Internamente** mantiene una mappa nodo → dato per i metodi `with*`. La mappa viene costruita durante l'esecuzione del join.
+**Internally** holds a node → datum map for the `with*` methods. The map is built during join execution.
 
 ---
 
-## Pattern implementativi
+## Implementation Patterns
 
 ### Null Object Pattern
 
-La libreria non usa mai `null` come valore di ritorno durante il chaining. Esistono due "oggetti vuoti":
+The library never uses `null` as a return value during chaining. Two "empty objects" exist:
 
-- **`Sel` vuoto** — selezione con lista nodi vuota. Tutte le operazioni sono no-op.
-- **`Node` vuoto** — estende `Sel` vuoto. Tutti i metodi di navigazione restituiscono valori vuoti.
+- **Empty `Sel`** — a selection with an empty node list. All operations are no-ops.
+- **Empty `Node`** — extends empty `Sel`. All navigation methods return empty values.
 
-Il `Node` vuoto dovrebbe essere un singleton. Il `Sel` vuoto no, perché porta il riferimento al `Sel` padre per `.end()`.
+The empty `Node` should be a singleton. The empty `Sel` should not, because it carries a reference to its parent `Sel` for `.end()`.
 
-### Sel padre e `.end()`
+### Sel parent and `.end()`
 
-Ogni `Sel` creato tramite sotto-selezione (`.sel()`) mantiene un riferimento al `Sel` da cui è stato generato. `.end()` restituisce quel riferimento. Una selezione radice (creata da `xml.sel(...)`) ha come padre sé stessa — `.end()` restituisce sé stessa, senza eccezioni.
+Every `Sel` created through a sub-selection (`.sel()`) holds a reference to the `Sel` that spawned it. `.end()` returns that reference. A root selection (created by `xml.sel(...)`) has itself as its parent — `.end()` returns itself, without exceptions.
 
-### Wrapping dei nodi DOM
+### DOM node wrapping
 
-I nodi `org.w3c.dom.Node` vengono avvolti in oggetti `Node` di XML Artisan on-demand. Non esiste una cache globale di wrapping — lo stesso nodo DOM può essere avvolto in più oggetti `Node` in momenti diversi. L'identità è basata sul nodo DOM sottostante (accessibile via `.unwrap()`), non sull'oggetto wrapper.
+`org.w3c.dom.Node` instances are wrapped in XML Artisan `Node` objects on demand. There is no global wrapping cache — the same DOM node may be wrapped in multiple `Node` objects at different times. Identity is based on the underlying DOM node (accessible via `.unwrap()`), not the wrapper object.
 
-### Immutabilità delle selezioni vs mutabilità dei nodi
+### Selection immutability vs node mutability
 
-Le selezioni stesse sono immutabili: la lista di nodi in un `Sel` non cambia dopo la creazione. Ciò che cambia è il contenuto dei nodi nel DOM (attributi, testo, figli). Questo è coerente con D3 dove "selections are immutable; only the elements are mutable."
+The selections themselves are immutable: the list of nodes in a `Sel` does not change after creation. What changes is the content of the nodes in the DOM (attributes, text, children). This is consistent with D3 where "selections are immutable; only the elements are mutable."
 
 ---
 
-## Gestione XPath
+## XPath Management
 
-### Architettura interna
+### Internal architecture
 
-L'oggetto `XML` mantiene un'istanza di `javax.xml.xpath.XPath` configurata con i namespace registrati. Le espressioni XPath vengono compilate ed eseguite tramite questa istanza.
+The `XML` object holds an instance of `javax.xml.xpath.XPath` configured with the registered namespaces. XPath expressions are compiled and evaluated through this instance.
 
-### Contesto di valutazione
+### Evaluation context
 
-| Chiamata | Context node per `xpath.evaluate()` |
-|----------|--------------------------------------|
-| `xml.get(xpath)` | Il `Document` |
-| `xml.sel(xpath)` | Il `Document` |
-| `sel.sel(xpath)` | Ciascun nodo nella selezione padre |
-| `node.sel(xpath)` | Il nodo sottostante |
+| Call | Context node for `xpath.evaluate()` |
+|------|--------------------------------------|
+| `xml.get(xpath)` | The `Document` |
+| `xml.sel(xpath)` | The `Document` |
+| `sel.sel(xpath)` | Each node in the parent selection |
+| `node.sel(xpath)` | The underlying node |
 
-### Rewrite automatico `//` → `.//`
+### Automatic `//` → `.//` rewrite
 
-Nelle sotto-selezioni, le espressioni che iniziano con `//` vengono riscritte come `.//` prima della valutazione. Questo avviene nel layer di wrapping, non nel layer XPath.
+In sub-selections, expressions starting with `//` are rewritten as `.//` before evaluation. This happens in the wrapping layer, not in the XPath layer.
 
-**Regola:** Se l'espressione inizia con `//` E il contesto non è il Document, viene preposto `.` all'espressione.
+**Rule:** If the expression starts with `//` AND the context is not the Document, `.` is prepended to the expression.
 
-L'API Java XPath supporta nativamente i contesti relativi tramite `xpath.evaluate(expression, contextNode, returnType)` dove `contextNode` è un qualsiasi `org.w3c.dom.Node`. Le espressioni relative (es. `.//a`, `child::a`, `@id`) funzionano correttamente con questo meccanismo.
+The Java XPath API natively supports relative contexts via `xpath.evaluate(expression, contextNode, returnType)` where `contextNode` is any `org.w3c.dom.Node`. Relative expressions (e.g., `.//a`, `child::a`, `@id`) work correctly with this mechanism.
 
-### Namespace
+### Namespaces
 
-I namespace vengono registrati sull'oggetto `XML` e propagati all'istanza XPath tramite un `NamespaceContext` custom. Tutte le selezioni create da quell'`XML` ereditano la stessa risoluzione namespace.
+Namespaces are registered on the `XML` object and propagated to the XPath instance through a custom `NamespaceContext`. All selections created from that `XML` inherit the same namespace resolution.
 
 ```java
 xml.namespace("dc", "http://purl.org/dc/elements/1.1/");
-// Da questo punto, "dc:" è risolto in tutte le espressioni XPath
+// From this point on, "dc:" is resolved in all XPath expressions
 ```
 
 ---
 
-## Meccanica del join
+## Join Mechanics
 
-### Flusso di esecuzione
+### Execution flow
 
-1. **`.data(list, keyFn?, nodeKeyFn?)`** — crea un `BoundSel<T>` che memorizza la lista dati, la key function e la selezione originale.
+1. **`.data(list, keyFn?, nodeKeyFn?)`** — creates a `BoundSel<T>` that stores the data list, the key function, and the original selection.
 
-2. **`.join(...)`** — esegue il data join:
-   - a. Calcola il matching tra nodi e dati (posizionale o per chiave).
-   - b. Classifica ogni nodo/dato in enter, update o exit.
-   - c. Raggruppa per parent (se ci sono parent multipli).
-   - d. Esegue gli handler per ciascun gruppo nell'ordine: exit, update, enter.
-   - e. Per l'enter, inserisce i nuovi nodi nella posizione corrispondente all'ordine dei dati (prima del prossimo sibling update).
-   - f. Merge dei nodi enter e update nella `JoinedSel<T>` risultante.
-   - g. Costruisce la mappa nodo → dato per i metodi `with*`.
+2. **`.join(...)`** — executes the data join:
+   - a. Computes the matching between nodes and data (positional or by key).
+   - b. Classifies each node/datum into enter, update, or exit.
+   - c. Groups by parent (if there are multiple parents).
+   - d. Executes the handlers for each group in order: exit, update, enter.
+   - e. For enter, inserts new nodes at the position corresponding to the data order (before the next update sibling).
+   - f. Merges the enter and update nodes into the resulting `JoinedSel<T>`.
+   - g. Builds the node → datum map for the `with*` methods.
 
-### Matching posizionale
+### Positional matching
 
-Senza key function, il matching è per indice: il nodo all'indice 0 corrisponde al dato all'indice 0, e così via. I nodi oltre la lunghezza dei dati vanno in exit, i dati oltre la lunghezza dei nodi vanno in enter.
+Without a key function, matching is by index: the node at index 0 corresponds to the datum at index 0, and so on. Nodes beyond the data length go into exit; data beyond the node length go into enter.
 
-### Matching per key function
+### Key-based matching
 
-Con key function, il matching è basato sull'identità logica. La key function viene valutata su ciascun dato (`keyFn.apply(item)`) e su ciascun nodo (`nodeKeyFn.apply(node)`). Nodi e dati con la stessa chiave vengono associati (update). Dati senza nodo corrispondente vanno in enter. Nodi senza dato corrispondente vanno in exit.
+With a key function, matching is based on logical identity. The key function is evaluated on each datum (`keyFn.apply(item)`) and on each node (`nodeKeyFn.apply(node)`). Nodes and data with the same key are paired (update). Data without a corresponding node go into enter. Nodes without a corresponding datum go into exit.
 
-Se più nodi hanno la stessa chiave, i duplicati vanno in exit. Se più dati hanno la stessa chiave, i duplicati vanno in enter.
+If multiple nodes have the same key, the duplicates go into exit. If multiple data items have the same key, the duplicates go into enter.
 
-### Parent multipli
+### Multiple parents
 
-Se la selezione contiene nodi con parent diversi, il join opera per ciascun gruppo di nodi che condividono lo stesso parent, come D3. I dati vengono distribuiti tra i gruppi.
+If the selection contains nodes with different parents, the join operates on each group of nodes that share the same parent, following D3 semantics. The data is distributed across groups.
 
-### Ordine di inserimento
+### Insertion order
 
-I nodi creati dall'enter vengono inseriti nella posizione corrispondente all'ordine dei dati, non in coda al parent. Il meccanismo è: il nodo enter viene inserito prima del prossimo sibling che appartiene al gruppo update. Questo mantiene la coerenza tra l'ordine dei dati e l'ordine dei nodi nel DOM.
+Nodes created during enter are inserted at the position corresponding to the data order, not appended at the end of the parent. The mechanism works as follows: the enter node is inserted before the next sibling that belongs to the update group. This maintains consistency between the data order and the node order in the DOM.
 
-Il metodo `.order()` su `JoinedSel` ri-ordina tutti i nodi (enter e update) nel DOM secondo l'ordine della selezione (che riflette l'ordine dei dati). Utile quando i nodi update hanno cambiato posizione rispetto ai dati.
+The `.order()` method on `JoinedSel` reorders all nodes (enter and update) in the DOM according to the selection order (which reflects the data order). Useful when update nodes have shifted position relative to the data.
 
 ---
 
-## Resilienza interna
+## Internal Resilience
 
-### Tabella completa dei comportamenti
+### Complete behavior table
 
-#### `Sel` e operazioni generiche
+#### `Sel` and general operations
 
-| Situazione | Comportamento |
-|------------|---------------|
-| `xml.get(xpath)` non trova nodi | `""` |
-| `xml.set(xpath, value)` non trova nodi | No-op |
-| `xml.sel(xpath)` non trova nodi | `Sel` vuoto |
-| Operazione su `Sel` vuoto | No-op, restituisce lo stesso `Sel` vuoto |
-| `.end()` su selezione radice | Restituisce sé stessa |
-| `.data()` con lista vuota | Tutti i nodi in exit |
-| `.data()` su `Sel` vuoto | Tutti i dati in enter |
-| `.stream()` su `Sel` vuoto | `Stream.empty()` |
-| `.list()` su `Sel` vuoto | Lista vuota |
-| `.size()` su `Sel` vuoto | `0` |
-| `.attr(name)` su primo nodo, attributo assente | `""` |
-| `.text()` su primo nodo, senza testo diretto | `""` |
-| `.deepText()` su primo nodo, senza text content | `""` |
-| `.normalizeText()` su `Sel` vuoto | No-op |
-| `.coalesceText()` su `Sel` vuoto | No-op |
-| `.cdata(value)` su `Sel` vuoto | No-op |
-| `.content(XML)` su `Sel` vuoto | No-op |
-| `.content(String)` su `Sel` vuoto | No-op |
+| Situation | Behavior |
+|-----------|----------|
+| `xml.get(xpath)` finds no nodes | `""` |
+| `xml.set(xpath, value)` finds no nodes | No-op |
+| `xml.sel(xpath)` finds no nodes | Empty `Sel` |
+| Operation on empty `Sel` | No-op, returns the same empty `Sel` |
+| `.end()` on root selection | Returns itself |
+| `.data()` with empty list | All nodes go to exit |
+| `.data()` on empty `Sel` | All data go to enter |
+| `.stream()` on empty `Sel` | `Stream.empty()` |
+| `.list()` on empty `Sel` | Empty list |
+| `.size()` on empty `Sel` | `0` |
+| `.attr(name)` on first node, attribute absent | `""` |
+| `.text()` on first node, no direct text | `""` |
+| `.deepText()` on first node, no text content | `""` |
+| `.normalizeText()` on empty `Sel` | No-op |
+| `.coalesceText()` on empty `Sel` | No-op |
+| `.cdata(value)` on empty `Sel` | No-op |
+| `.content(XML)` on empty `Sel` | No-op |
+| `.content(String)` on empty `Sel` | No-op |
 
-#### `Node` vuoto (null object)
+#### Empty `Node` (null object)
 
-| Operazione | Comportamento |
-|------------|---------------|
+| Operation | Behavior |
+|-----------|----------|
 | `.attr(name)` | `""` |
-| `.attr(name, value)` | No-op, restituisce lo stesso `Node` vuoto |
+| `.attr(name, value)` | No-op, returns the same empty `Node` |
 | `.text()` | `""` |
 | `.deepText()` | `""` |
-| `.text(value)` | No-op, restituisce lo stesso `Node` vuoto |
+| `.text(value)` | No-op, returns the same empty `Node` |
 | `.normalizeText()` | No-op |
 | `.coalesceText()` | No-op |
 | `.cdata(value)` | No-op |
 | `.content(XML)` | No-op |
 | `.content(String)` | No-op |
 | `.name()` | `""` |
-| `.children()` | `Sel` vuoto |
-| `.parent()` | `Node` vuoto |
-| `.sel(xpath)` | `Sel` vuoto |
-| `.append(tag/xml)` | `Node` vuoto |
-| `.prepend(tag/xml)` | `Node` vuoto |
-| `.before(tag/xml)` | `Node` vuoto |
-| `.after(tag/xml)` | `Node` vuoto |
-| `.replace(xml)` | `Node` vuoto |
+| `.children()` | Empty `Sel` |
+| `.parent()` | Empty `Node` |
+| `.sel(xpath)` | Empty `Sel` |
+| `.append(tag/xml)` | Empty `Node` |
+| `.prepend(tag/xml)` | Empty `Node` |
+| `.before(tag/xml)` | Empty `Node` |
+| `.after(tag/xml)` | Empty `Node` |
+| `.replace(xml)` | Empty `Node` |
 | `.remove()` | No-op |
 | `.unwrap()` | `null` |
 
-### Eccezioni ammesse
+### Allowed exceptions
 
-Gerarchia: `XmlArtisanException extends RuntimeException` con sottoclassi specifiche. Le uniche eccezioni sono per errori di programmazione non recuperabili:
+Hierarchy: `XmlArtisanException extends RuntimeException` with specific subclasses. The only exceptions are for non-recoverable programming errors:
 
-- **XML malformato** — `XML.parse()` / `XML.from()` con input non valido → `ParseException`.
-- **XPath malformato** — errore di sintassi nell'espressione → `XPathException` (il messaggio include l'espressione).
-- **Nome non valido** — tag o attributi con caratteri non ammessi → `InvalidNameException` (il messaggio include il nome).
-- **File non trovato** — `XML.from()` con path inesistente → `UncheckedIOException`.
-- **Prefisso namespace non registrato** — `IllegalArgumentException`.
-- **Errore di serializzazione** — `XmlArtisanException` (tipo base).
+- **Malformed XML** — `XML.parse()` / `XML.from()` with invalid input → `ParseException`.
+- **Malformed XPath** — syntax error in the expression → `XPathException` (the message includes the expression).
+- **Invalid name** — tags or attributes with disallowed characters → `InvalidNameException` (the message includes the name).
+- **File not found** — `XML.from()` with a non-existent path → `UncheckedIOException`.
+- **Unregistered namespace prefix** — `IllegalArgumentException`.
+- **Serialization error** — `XmlArtisanException` (base type).
 
-Tutte estendono `RuntimeException`, quindi catturare `XmlArtisanException` intercetta tutti gli errori della libreria (esclusi I/O e namespace).
-
----
-
-## Thread safety
-
-Nessun tipo della libreria (`XML`, `Sel`, `Node`, `BoundSel`, `JoinedSel`) è thread-safe. L'utente è responsabile della sincronizzazione se accede agli stessi oggetti da thread diversi.
-
-Questa scelta è coerente con:
-- Il `org.w3c.dom.Document` sottostante, che non è thread-safe.
-- L'istanza `javax.xml.xpath.XPath`, che non è thread-safe.
-- L'uso tipico: pipeline di trasformazione in un singolo thread.
+All extend `RuntimeException`, so catching `XmlArtisanException` intercepts all library errors (except I/O and namespace errors).
 
 ---
 
-## Dipendenze JVM
+## Thread Safety
 
-XML Artisan utilizza esclusivamente API standard della JVM:
+No type in the library (`XML`, `Sel`, `Node`, `BoundSel`, `JoinedSel`) is thread-safe. The user is responsible for synchronization if the same objects are accessed from multiple threads.
 
-| API | Uso |
-|-----|-----|
-| `javax.xml.parsers.DocumentBuilder` | Parsing XML |
-| `org.w3c.dom.*` | Struttura dati DOM |
-| `javax.xml.xpath.*` | Valutazione espressioni XPath |
-| `javax.xml.transform.*` | Serializzazione (DOM → stringa/file) |
+This choice is consistent with:
+- The underlying `org.w3c.dom.Document`, which is not thread-safe.
+- The `javax.xml.xpath.XPath` instance, which is not thread-safe.
+- The typical usage pattern: a transformation pipeline on a single thread.
 
-Nessuna dipendenza esterna. Compatibile con qualsiasi versione di Java che include queste API (Java 8+).
+---
+
+## JVM Dependencies
+
+XML Artisan uses exclusively standard JVM APIs:
+
+| API | Usage |
+|-----|-------|
+| `javax.xml.parsers.DocumentBuilder` | XML parsing |
+| `org.w3c.dom.*` | DOM data structure |
+| `javax.xml.xpath.*` | XPath expression evaluation |
+| `javax.xml.transform.*` | Serialization (DOM → string/file) |
+
+No external dependencies. Compatible with any Java version that includes these APIs (Java 8+).

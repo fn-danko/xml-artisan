@@ -1,12 +1,12 @@
 # XML Artisan — API Reference
 
-> Reference completo dell'API pubblica della libreria.
+> Complete reference for the library's public API.
 
 **Package:** `net.fndanko.xml.artisan`
 
 ---
 
-## Indice
+## Table of Contents
 
 1. [XML](#xml)
 2. [Sel](#sel)
@@ -20,118 +20,118 @@
 
 ## XML
 
-Entry point della libreria. Rappresenta un documento XML in memoria.
+Entry point of the library. Represents an in-memory XML document.
 
 ### Factory methods
 
 #### `XML.from(Path path) → XML`
 
-Carica e parsa un documento XML da file.
+Loads and parses an XML document from a file.
 
 ```java
 XML xml = XML.from(Path.of("./catalog.xml"));
 ```
 
-**Eccezioni:** `UncheckedIOException` se il file non esiste. `ParseException` se l'XML è malformato.
+**Exceptions:** `UncheckedIOException` if the file does not exist. `ParseException` if the XML is malformed.
 
 #### `XML.parse(String xmlString) → XML`
 
-Parsa un documento XML da stringa.
+Parses an XML document from a string.
 
 ```java
 XML xml = XML.parse("<root><item id='1'/></root>");
 ```
 
-**Eccezioni:** `ParseException` se l'XML è malformato.
+**Exceptions:** `ParseException` if the XML is malformed.
 
 #### `XML.create(String rootTagName) → XML`
 
-Crea un documento vuoto con il root element specificato.
+Creates an empty document with the specified root element.
 
 ```java
 XML xml = XML.create("catalog");
-// Produce: <catalog/>
+// Produces: <catalog/>
 ```
 
-### Lettura e scrittura puntuale
+### Point read and write
 
 #### `.get(String xpath) → String`
 
-Valuta l'espressione XPath dalla radice del documento e restituisce il valore come stringa.
+Evaluates the XPath expression from the document root and returns the value as a string.
 
 ```java
 String id = xml.get("/catalog/book/@id");
 String title = xml.get("/catalog/book[1]/title");
 ```
 
-**Ritorno:** Il valore del nodo trovato. `""` (stringa vuota) se l'XPath non trova nodi.
+**Returns:** The value of the matched node. `""` (empty string) if the XPath matches nothing.
 
 #### `.set(String xpath, String value) → void`
 
-Imposta il valore del nodo trovato dall'XPath.
+Sets the value of the node matched by the XPath expression.
 
 ```java
 xml.set("/catalog/book[1]/@id", "new-id");
-xml.set("/catalog/book[1]/title", "Nuovo titolo");
+xml.set("/catalog/book[1]/title", "New Title");
 ```
 
-**Comportamento:** No-op se l'XPath non trova nodi.
+**Behavior:** No-op if the XPath matches nothing.
 
-### Selezioni
+### Selections
 
 #### `.sel(String xpath) → Sel`
 
-Crea una selezione con tutti i nodi che matchano l'espressione XPath, valutata dalla radice del documento.
+Creates a selection with all nodes matching the XPath expression, evaluated from the document root.
 
 ```java
 Sel books = xml.sel("//book");
 Sel italianBooks = xml.sel("//book[@lang='it']");
 ```
 
-**Ritorno:** `Sel` vuoto se nessun nodo corrisponde. Mai `null`.
+**Returns:** Empty `Sel` if no nodes match. Never `null`.
 
 ### Namespace
 
 #### `.namespace(String prefix, String uri) → XML`
 
-Registra un prefisso namespace per l'uso nelle espressioni XPath.
+Registers a namespace prefix for use in XPath expressions.
 
 ```java
 xml.namespace("dc", "http://purl.org/dc/elements/1.1/");
-xml.sel("//dc:title").text("Nuovo titolo");
+xml.sel("//dc:title").text("New Title");
 ```
 
-**Ritorno:** L'oggetto `XML` stesso (per chaining).
+**Returns:** The `XML` object itself (for chaining).
 
 ### Text normalization
 
 #### `.normalizeText() → XML`
 
-Applica `normalizeText()` ricorsivamente a tutto il documento (depth-first post-order: prima normalizza i figli, poi il nodo stesso).
+Applies `normalizeText()` recursively across the entire document (depth-first post-order: children are normalized before the node itself).
 
 ```java
 xml.normalizeText();
 ```
 
-**Ritorno:** L'oggetto `XML` stesso (per chaining).
+**Returns:** The `XML` object itself (for chaining).
 
-### Serializzazione
+### Serialization
 
 #### `.toString() → String`
 
-Serializza il documento XML completo, con dichiarazione XML.
+Serializes the complete XML document, including the XML declaration.
 
 #### `.toFragment() → String`
 
-Serializza il documento XML senza dichiarazione XML.
+Serializes the XML document without the XML declaration.
 
 #### `.writeTo(Path path) → void`
 
-Scrive il documento su file con opzioni di default.
+Writes the document to a file with default options.
 
 #### `.writeTo(Path path, OutputOptions options) → void`
 
-Scrive il documento su file con opzioni personalizzate.
+Writes the document to a file with custom options.
 
 ```java
 xml.writeTo(Path.of("./output.xml"), OutputOptions.builder()
@@ -146,32 +146,32 @@ xml.writeTo(Path.of("./output.xml"), OutputOptions.builder()
 
 ## Sel
 
-Selezione di zero o più nodi. Tutte le operazioni di modifica sono immediate (agiscono sul DOM nel momento della chiamata) e restituiscono `Sel` per il chaining. Implementa `Iterable<Node>`.
+Selection of zero or more nodes. All modification operations are immediate (they act on the DOM at call time) and return `Sel` for chaining. Implements `Iterable<Node>`.
 
-### Lettura
+### Reading
 
 #### `.attr(String name) → String`
 
-Restituisce il valore dell'attributo dal **primo nodo** della selezione.
+Returns the attribute value from the **first node** in the selection.
 
-**Ritorno:** `""` se la selezione è vuota o l'attributo non esiste.
+**Returns:** `""` if the selection is empty or the attribute does not exist.
 
 #### `.text() → String`
 
-Restituisce il testo diretto del **primo nodo** della selezione — concatena il contenuto di tutti i nodi TEXT e CDATA figli diretti, senza modificare il DOM.
+Returns the direct text of the **first node** in the selection — concatenates the content of all direct TEXT and CDATA child nodes, without modifying the DOM.
 
-**Ritorno:** `""` se la selezione è vuota o non ha testo diretto.
+**Returns:** `""` if the selection is empty or has no direct text.
 
 ```java
 // <p>Hello <b>world</b> today</p>
-xml.sel("//p").text();   // → "Hello  today" (solo testo diretto, non ricorsivo)
+xml.sel("//p").text();   // → "Hello  today" (direct text only, not recursive)
 ```
 
 #### `.deepText() → String`
 
-Restituisce il testo ricorsivo di tutti i discendenti del **primo nodo** (equivalente a `getTextContent()`).
+Returns the recursive text of all descendants of the **first node** (equivalent to `getTextContent()`).
 
-**Ritorno:** `""` se la selezione è vuota.
+**Returns:** `""` if the selection is empty.
 
 ```java
 // <p>Hello <b>world</b> today</p>
@@ -180,19 +180,19 @@ xml.sel("//p").deepText();   // → "Hello world today"
 
 #### `.size() → int`
 
-Numero di nodi nella selezione.
+Number of nodes in the selection.
 
 #### `.empty() → boolean`
 
-`true` se la selezione non contiene nodi.
+`true` if the selection contains no nodes.
 
-### Modifica
+### Modification
 
-Tutte le operazioni di modifica restituiscono la **stessa `Sel`** per il chaining. Su selezione vuota sono no-op.
+All modification operations return the **same `Sel`** for chaining. On an empty selection they are no-ops.
 
 #### `.attr(String name, String value) → Sel`
 
-Imposta l'attributo con valore fisso su **tutti i nodi** della selezione.
+Sets the attribute to a fixed value on **all nodes** in the selection.
 
 ```java
 xml.sel("//p").attr("style", "text-align: center;");
@@ -200,7 +200,7 @@ xml.sel("//p").attr("style", "text-align: center;");
 
 #### `.attr(String name, Function<String, String> fn) → Sel`
 
-Trasforma l'attributo su ogni nodo. La funzione riceve il valore corrente e restituisce il nuovo valore.
+Transforms the attribute on each node. The function receives the current value and returns the new value.
 
 ```java
 xml.sel("//a").attr("href", v -> v.replace("http://", "https://"));
@@ -208,16 +208,16 @@ xml.sel("//a").attr("href", v -> v.replace("http://", "https://"));
 
 #### `.text(String value) → Sel`
 
-Imposta il testo diretto su tutti i nodi. Chiama `normalizeText()` internamente, rimuove tutti i nodi TEXT/CDATA figli diretti e inserisce un singolo TEXT_NODE come primo figlio. Preserva tutti gli elementi figli.
+Sets the direct text on all nodes. Internally calls `normalizeText()`, removes all direct TEXT/CDATA child nodes, and inserts a single TEXT_NODE as the first child. Preserves all child elements.
 
 ```java
-xml.sel("//title").text("Nuovo titolo");
+xml.sel("//title").text("New Title");
 // <p>Hello <b>world</b> today</p> + .text("New") → <p>New<b>world</b></p>
 ```
 
 #### `.text(Function<String, String> fn) → Sel`
 
-Trasforma il testo diretto su ogni nodo. Legge con `text()` (senza side-effect), applica la funzione, scrive con `text(String)`.
+Transforms the direct text on each node. Reads with `text()` (no side-effect), applies the function, writes with `text(String)`.
 
 ```java
 xml.sel("//code").text(v -> v.trim());
@@ -225,18 +225,18 @@ xml.sel("//code").text(v -> v.trim());
 
 #### `.cdata(String value) → Sel`
 
-Identico a `text(String)` ma inserisce un CDATA_SECTION_NODE invece di TEXT_NODE. Chiama `normalizeText()` internamente, rimuove tutti i nodi TEXT/CDATA figli diretti e inserisce un singolo CDATA_SECTION_NODE come primo figlio. Preserva tutti gli elementi figli.
+Identical to `text(String)` but inserts a CDATA_SECTION_NODE instead of a TEXT_NODE. Internally calls `normalizeText()`, removes all direct TEXT/CDATA child nodes, and inserts a single CDATA_SECTION_NODE as the first child. Preserves all child elements.
 
 ```java
 xml.sel("//script").cdata("var x = '<div>hello</div>';");
-// Il contenuto con caratteri speciali XML è preservato nel CDATA
+// Content with XML special characters is preserved in the CDATA section
 ```
 
-**Nota:** `text()` in lettura restituisce il contenuto sia di TEXT che di CDATA — la distinzione è solo in scrittura.
+**Note:** `text()` in read mode returns the content of both TEXT and CDATA nodes — the distinction only matters on write.
 
 #### `.content(XML fragment) → Sel`
 
-Sostituisce **tutti** i figli di ogni nodo nella selezione con il root element del frammento XML. Preserva il nodo stesso (tag, attributi, posizione nel DOM).
+Replaces **all** children of each node in the selection with the root element of the XML fragment. Preserves the node itself (tag, attributes, position in the DOM).
 
 ```java
 // <p class="x">old text</p>  →  <p class="x"><div><b>new</b> content</div></p>
@@ -245,20 +245,20 @@ xml.sel("//p").content(XML.parse("<div><b>new</b> content</div>"));
 
 #### `.content(String xmlContent) → Sel`
 
-Variante stringa. Accetta una stringa XML che può contenere mixed content senza un singolo root. Internamente wrappata in un tag sintetico, parsata, e i **figli** del wrapper vengono importati.
+String variant. Accepts an XML string that may contain mixed content without a single root. Internally wrapped in a synthetic tag, parsed, and the **children** of the wrapper are imported.
 
 ```java
 // <p class="x">old text</p>  →  <p class="x"><b>new</b> content</p>
 xml.sel("//p").content("<b>new</b> content");
 ```
 
-**Differenza chiave:**
-- `content(XML)` → importa il root element del frammento (un singolo nodo)
-- `content(String)` → parsa con wrapper, importa i figli del wrapper (può essere mixed content)
+**Key difference:**
+- `content(XML)` → imports the fragment's root element (a single node)
+- `content(String)` → parses with a wrapper, imports the wrapper's children (can be mixed content)
 
 #### `.normalizeText() → Sel`
 
-Unifica i nodi TEXT/CDATA figli diretti frammentati in un singolo nodo, posizionato come primo figlio. Se almeno uno era CDATA, il risultato è CDATA. Lascia intatti gli elementi figli.
+Merges fragmented direct TEXT/CDATA child nodes into a single node, positioned as the first child. If at least one was CDATA, the result is CDATA. Leaves child elements intact.
 
 ```java
 // <p>Hello <b>world</b> today</p> → <p>Hello  today<b>world</b></p>
@@ -267,7 +267,7 @@ xml.sel("//p").normalizeText();
 
 #### `.coalesceText() → Sel`
 
-Normalizzazione distruttiva: raccoglie `getTextContent()`, rimuove **tutti** i figli, setta un singolo nodo testo. Distrugge gli elementi figli.
+Destructive normalization: collects `getTextContent()`, removes **all** children, sets a single text node. Destroys child elements.
 
 ```java
 // <p>Hello <b>world</b> today</p> → <p>Hello world today</p>
@@ -276,135 +276,135 @@ xml.sel("//p").coalesceText();
 
 #### `.remove() → Sel`
 
-Rimuove tutti i nodi della selezione dal DOM.
+Removes all nodes in the selection from the DOM.
 
-**Ritorno:** La selezione padre (da cui questa selezione è stata creata).
+**Returns:** The parent selection (from which this selection was created).
 
-### Inserimento strutturale
+### Structural insertion
 
-Operazioni di side-effect che **restituiscono la selezione originale** (non i nodi inseriti). L'inserimento avviene per ogni nodo della selezione.
+Side-effect operations that **return the original selection** (not the inserted nodes). Insertion is performed for each node in the selection.
 
 #### `.append(String tagName) → Sel`
 
-Aggiunge un figlio vuoto con il tag specificato a ogni nodo della selezione.
+Appends an empty child with the specified tag to each node in the selection.
 
 ```java
 xml.sel("//item").append("status");
-// Aggiunge <status/> come ultimo figlio di ogni <item>
-// Ritorna la selezione degli <item>, non dei <status>
+// Appends <status/> as the last child of each <item>
+// Returns the selection of <item> elements, not the <status> elements
 ```
 
 #### `.append(XML fragment) → Sel`
 
-Aggiunge un frammento XML come figlio a ogni nodo della selezione.
+Appends an XML fragment as a child to each node in the selection.
 
 #### `.prepend(String tagName) → Sel`
 
-Aggiunge un figlio vuoto in testa (come primo figlio) a ogni nodo.
+Prepends an empty child (as the first child) to each node.
 
 #### `.prepend(XML fragment) → Sel`
 
-Aggiunge un frammento XML in testa a ogni nodo.
+Prepends an XML fragment to each node.
 
 #### `.before(String tagName) → Sel`
 
-Inserisce un sibling vuoto prima di ogni nodo della selezione.
+Inserts an empty sibling before each node in the selection.
 
 ```java
 xml.sel("//section").before(XML.parse("<hr/>"));
-// Inserisce <hr/> prima di ogni <section>
-// Ritorna la selezione delle <section>
+// Inserts <hr/> before each <section>
+// Returns the selection of <section> elements
 ```
 
 #### `.before(XML fragment) → Sel`
 
-Inserisce un frammento XML come sibling prima di ogni nodo.
+Inserts an XML fragment as a sibling before each node.
 
 #### `.after(String tagName) → Sel`
 
-Inserisce un sibling vuoto dopo ogni nodo della selezione.
+Inserts an empty sibling after each node in the selection.
 
 #### `.after(XML fragment) → Sel`
 
-Inserisce un frammento XML come sibling dopo ogni nodo.
+Inserts an XML fragment as a sibling after each node.
 
 #### `.replace(XML fragment) → Sel`
 
-Sostituisce ogni nodo della selezione con il frammento XML.
+Replaces each node in the selection with the XML fragment.
 
-**Attenzione:** A differenza degli altri metodi strutturali, `replace` restituisce un **`Sel` con i nuovi nodi** (quelli che hanno sostituito gli originali), perché gli originali non esistono più nel DOM.
+**Important:** Unlike the other structural methods, `replace` returns a **`Sel` containing the new nodes** (the ones that replaced the originals), because the originals no longer exist in the DOM.
 
 ```java
 Sel newNodes = xml.sel("//old-tag").replace(XML.parse("<new-tag/>"));
 newNodes.attr("migrated", "true");
 ```
 
-### Navigazione
+### Navigation
 
 #### `.sel(String xpath) → Sel`
 
-Crea una sotto-selezione: valuta l'XPath **relativamente a ciascun nodo** della selezione corrente.
+Creates a sub-selection: evaluates the XPath **relative to each node** in the current selection.
 
 ```java
 xml.sel("//div").sel("//a");
-// Per ogni <div>, cerca tutti i discendenti <a>
-// Nota: "//a" è trattato come ".//a" nelle sotto-selezioni
+// For each <div>, finds all descendant <a> elements
+// Note: "//a" is treated as ".//a" in sub-selections
 ```
 
-**Ritorno:** `Sel` vuoto se nessun nodo corrisponde. Il nuovo `Sel` mantiene un riferimento a questa selezione come padre (per `.end()`).
+**Returns:** Empty `Sel` if no nodes match. The new `Sel` keeps a reference to this selection as its parent (for `.end()`).
 
 #### `.end() → Sel`
 
-Risale alla selezione da cui questa è stata generata (tramite `.sel()`).
+Returns to the selection from which this one was created (via `.sel()`).
 
 ```java
 xml.sel("//div")
     .sel("//p").attr("style", "margin: 0;")
-    .end()  // torna a //div
+    .end()  // back to //div
     .attr("class", "processed");
 ```
 
-**Comportamento:** Se chiamato su una selezione radice (creata da `xml.sel(...)`) restituisce sé stessa.
+**Behavior:** If called on a root selection (created by `xml.sel(...)`) returns itself.
 
 ### Data binding
 
 #### `.data(List<T> data) → BoundSel<T>`
 
-Associa una lista di dati alla selezione con matching posizionale (primo nodo ↔ primo dato, ecc.).
+Associates a data list with the selection using positional matching (first node ↔ first datum, etc.).
 
 #### `.data(List<T> data, Function<T, K> dataKey, Function<Node, K> nodeKey) → BoundSel<T>`
 
-Associa una lista di dati con matching per key function.
+Associates a data list using key-based matching.
 
 ```java
 xml.sel("//item").data(items, Item::getId, node -> node.attr("id"));
 ```
 
-### Conversione e iterazione
+### Conversion and iteration
 
 #### `.stream() → Stream<Node>`
 
-Restituisce un `Stream<Node>` sui nodi della selezione. `Stream.empty()` se vuota.
+Returns a `Stream<Node>` over the selection's nodes. `Stream.empty()` if empty.
 
 #### `.list() → List<Node>`
 
-Restituisce una `List<Node>` con tutti i nodi. Lista vuota se selezione vuota.
+Returns a `List<Node>` with all nodes. Empty list if the selection is empty.
 
 #### `.first() → Node`
 
-Restituisce il primo nodo della selezione come `Node`. `Node` vuoto se selezione vuota.
+Returns the first node in the selection as a `Node`. Empty `Node` if the selection is empty.
 
 #### `.last() → Node`
 
-Restituisce l'ultimo nodo della selezione come `Node`. `Node` vuoto se selezione vuota.
+Returns the last node in the selection as a `Node`. Empty `Node` if the selection is empty.
 
 #### `.order() → Sel`
 
-Riordina i nodi nel DOM in modo che il loro ordine nel documento corrisponda all'ordine nella selezione.
+Reorders the nodes in the DOM so that their document order matches the selection order.
 
 #### `Iterable<Node>`
 
-`Sel` implementa `Iterable<Node>`, consentendo l'uso in for-each:
+`Sel` implements `Iterable<Node>`, enabling use in for-each loops:
 
 ```java
 for (Node book : xml.sel("//book")) {
@@ -416,119 +416,119 @@ for (Node book : xml.sel("//book")) {
 
 ## Node
 
-Estende `Sel`. Rappresenta un singolo nodo XML. Supporta tutte le operazioni di `Sel` più metodi di navigazione DOM.
+Extends `Sel`. Represents a single XML node. Supports all `Sel` operations plus DOM navigation methods.
 
-Un `Node` vuoto (null object) è restituito da operazioni come `.first()` su `Sel` vuoto. Tutte le operazioni su un `Node` vuoto sono no-op.
+An empty `Node` (null object) is returned by operations like `.first()` on an empty `Sel`. All operations on an empty `Node` are no-ops.
 
-### Navigazione DOM
+### DOM Navigation
 
 #### `.children() → Sel`
 
-Restituisce una `Sel` con i figli diretti del nodo.
+Returns a `Sel` with the node's direct children.
 
 ```java
 Node book = xml.sel("//book").first();
-book.children().attr("visible", "true");    // modifica tutti i figli
-List<Node> kids = book.children().list();   // lista dei figli
+book.children().attr("visible", "true");    // modifies all children
+List<Node> kids = book.children().list();   // list of children
 ```
 
-**Ritorno:** `Sel` vuoto se nodo foglia o `Node` vuoto.
+**Returns:** Empty `Sel` if the node is a leaf or an empty `Node`.
 
 #### `.parent() → Node`
 
-Restituisce il nodo padre.
+Returns the parent node.
 
-**Ritorno:** `Node` vuoto se il nodo è la radice del documento o se è un `Node` vuoto.
+**Returns:** Empty `Node` if the node is the document root or an empty `Node`.
 
 #### `.name() → String`
 
-Restituisce il nome del tag dell'elemento.
+Returns the element's tag name.
 
-**Ritorno:** `""` se `Node` vuoto.
+**Returns:** `""` if empty `Node`.
 
-### Inserimento strutturale
+### Structural insertion
 
-A differenza di `Sel`, i metodi strutturali su `Node` restituiscono il **nuovo nodo creato**. Questo permette la costruzione di strutture in profondità.
+Unlike `Sel`, structural methods on `Node` return the **newly created node**. This enables deep structure construction.
 
 #### `.append(String tagName) → Node`
 
-Crea un figlio vuoto e lo aggiunge in coda. Restituisce il **figlio**.
+Creates an empty child and appends it at the end. Returns the **child**.
 
 ```java
-node.append("chapter")         // → il nuovo <chapter>
+node.append("chapter")         // → the new <chapter>
     .attr("num", "1")
-    .append("title")           // → il nuovo <title> dentro <chapter>
-        .text("Introduzione");
+    .append("title")           // → the new <title> inside <chapter>
+        .text("Introduction");
 ```
 
 #### `.append(XML fragment) → Node`
 
-Aggiunge un frammento XML come figlio. Restituisce il **nuovo nodo** (root del frammento inserito).
+Appends an XML fragment as a child. Returns the **new node** (the inserted fragment's root).
 
 #### `.prepend(String tagName) → Node`
 
-Crea un figlio vuoto e lo aggiunge in testa (prima di tutti gli altri figli). Restituisce il **figlio**.
+Creates an empty child and prepends it (before all other children). Returns the **child**.
 
 #### `.prepend(XML fragment) → Node`
 
-Aggiunge un frammento XML in testa. Restituisce il **nuovo nodo**.
+Prepends an XML fragment. Returns the **new node**.
 
 #### `.insert(String tagName, Node before) → Node`
 
-Inserisce un figlio vuoto prima del nodo `before` specificato. Restituisce il **figlio**.
+Inserts an empty child before the specified `before` node. Returns the **child**.
 
 #### `.before(String tagName) → Node`
 
-Inserisce un sibling vuoto prima di questo nodo. Restituisce il **nuovo nodo**.
+Inserts an empty sibling before this node. Returns the **new node**.
 
 #### `.before(XML fragment) → Node`
 
-Inserisce un frammento XML come sibling prima. Restituisce il **nuovo nodo**.
+Inserts an XML fragment as a sibling before this node. Returns the **new node**.
 
 #### `.after(String tagName) → Node`
 
-Inserisce un sibling vuoto dopo questo nodo. Restituisce il **nuovo nodo**.
+Inserts an empty sibling after this node. Returns the **new node**.
 
 #### `.after(XML fragment) → Node`
 
-Inserisce un frammento XML come sibling dopo. Restituisce il **nuovo nodo**.
+Inserts an XML fragment as a sibling after this node. Returns the **new node**.
 
 #### `.replace(XML fragment) → Node`
 
-Sostituisce questo nodo con il frammento XML. Restituisce il **nuovo nodo** (il sostituto). Il nodo originale non esiste più nel DOM.
+Replaces this node with the XML fragment. Returns the **new node** (the replacement). The original node no longer exists in the DOM.
 
-### Accesso DOM
+### DOM access
 
 #### `.unwrap() → org.w3c.dom.Node`
 
-Restituisce il nodo DOM sottostante.
+Returns the underlying DOM node.
 
-**Ritorno:** `null` se `Node` vuoto.
+**Returns:** `null` if empty `Node`.
 
 ---
 
 ## BoundSel\<T\>
 
-Selezione con dati associati, in attesa del join. Tipo transitorio creato da `Sel.data()`.
+Selection with associated data, awaiting the join. Transitional type created by `Sel.data()`.
 
 ### `.join(String tagName) → JoinedSel<T>`
 
-Forma abbreviata (shorthand). Esegue il join con default opinionati:
+Shorthand form. Executes the join with opinionated defaults:
 
-- **enter:** appende un nuovo elemento con il tag specificato.
-- **update:** identity (nodo invariato).
-- **exit:** rimuove il nodo.
+- **enter:** appends a new element with the specified tag.
+- **update:** identity (node unchanged).
+- **exit:** removes the node.
 
 ```java
 xml.sel("//item").data(items).join("item")
     .attrWith("name", (current, item) -> item.getName());
 ```
 
-**Ritorno:** `JoinedSel<T>` contenente la merge di nodi enter e update.
+**Returns:** `JoinedSel<T>` containing the merge of enter and update nodes.
 
 ### `.join(JoinConfig<T> config) → JoinedSel<T>`
 
-Forma con configurazione esplicita. Vedi [JoinConfig\<T\>](#joinconfigt).
+Form with explicit configuration. See [JoinConfig\<T\>](#joinconfigt).
 
 ```java
 xml.sel("//item").data(items).join(JoinConfig.<Item>builder()
@@ -541,76 +541,76 @@ xml.sel("//item").data(items).join(JoinConfig.<Item>builder()
 
 ## JoinConfig\<T\>
 
-Configurazione del join tramite builder pattern. Permette controllo granulare su enter, update, exit.
+Join configuration via builder pattern. Provides granular control over enter, update, and exit.
 
 ### `JoinConfig.builder() → Builder<T>` (static)
 
-Crea un nuovo builder.
+Creates a new builder.
 
 ### Builder methods
 
 #### `.defaults(String tagName) → Builder<T>`
 
-Attiva il comportamento della shorthand come base:
+Activates the shorthand behavior as a baseline:
 
-- **enter:** appende un elemento con il tag specificato.
+- **enter:** appends an element with the specified tag.
 - **update:** identity.
-- **exit:** rimuove il nodo.
+- **exit:** removes the node.
 
-Gli handler specificati successivamente sovrascrivono i singoli default.
+Handlers specified afterward override individual defaults.
 
 #### `.enter(BiFunction<Node, T, Node> fn) → Builder<T>`
 
-Specifica l'handler per i dati senza nodo corrispondente. La funzione riceve `(parent, dato)` e restituisce il nodo creato.
+Specifies the handler for data items with no corresponding node. The function receives `(parent, datum)` and returns the created node.
 
-Passare `null` significa "ignora, non creare nodi".
+Passing `null` means "skip, do not create nodes."
 
 #### `.update(BiFunction<Node, T, Node> fn) → Builder<T>`
 
-Specifica l'handler per i nodi con dato corrispondente. La funzione riceve `(nodo, dato)` e restituisce il nodo (tipicamente lo stesso, dopo averlo modificato).
+Specifies the handler for nodes with a corresponding datum. The function receives `(node, datum)` and returns the node (typically the same one, after modification).
 
-Passare `null` significa "identity, non modificare il nodo".
+Passing `null` means "identity, do not modify the node."
 
 #### `.exit(Consumer<Node> fn) → Builder<T>`
 
-Specifica l'handler per i nodi senza dato corrispondente. La funzione riceve il nodo da gestire.
+Specifies the handler for nodes with no corresponding datum. The function receives the node to handle.
 
-Passare `null` significa "ignora, lascia il nodo nel DOM".
+Passing `null` means "skip, leave the node in the DOM."
 
 #### `.build() → JoinConfig<T>`
 
-Costruisce la configurazione.
+Builds the configuration.
 
-### Semantica dei valori
+### Value semantics
 
-| Stato handler | enter | update | exit |
+| Handler state | enter | update | exit |
 |---------------|-------|--------|------|
-| **Da `.defaults()`** | Appende tag | Identity | Rimuove |
-| **Handler custom** | Esegue handler | Esegue handler | Esegue handler |
-| **`null` esplicito** | Ignora | Identity | Ignora |
-| **Non specificato (senza `.defaults()`)** | Ignora | Identity | Ignora |
+| **From `.defaults()`** | Appends tag | Identity | Removes |
+| **Custom handler** | Executes handler | Executes handler | Executes handler |
+| **Explicit `null`** | Skipped | Identity | Skipped |
+| **Unspecified (without `.defaults()`)** | Skipped | Identity | Skipped |
 
-### Esempi
+### Examples
 
 ```java
-// Parto dai default, sovrascrivo solo update
+// Start from defaults, override only update
 JoinConfig.<Item>builder()
     .defaults("item")
     .update((node, item) -> node.attr("name", item.getName()))
     .build();
 
-// Solo enter, non tocco esistenti, non rimuovo
+// Enter only — don't touch existing nodes, don't remove anything
 JoinConfig.<Item>builder()
     .enter((parent, item) -> parent.append("item").attr("id", item.getId()))
     .build();
 
-// Default con exit personalizzato
+// Defaults with custom exit
 JoinConfig.<Item>builder()
     .defaults("item")
     .exit(node -> node.attr("deprecated", "true"))
     .build();
 
-// Default ma NON rimuovere gli exit (null esplicito)
+// Defaults but do NOT remove exit nodes (explicit null)
 JoinConfig.<Item>builder()
     .defaults("item")
     .exit(null)
@@ -621,22 +621,22 @@ JoinConfig.<Item>builder()
 
 ## JoinedSel\<T\>
 
-Estende `Sel`. Risultato del join: contiene i nodi merged (enter + update) con il dato associato accessibile tramite metodi `with*`.
+Extends `Sel`. Result of the join: contains the merged nodes (enter + update) with the associated datum accessible through `with*` methods.
 
-### Metodi ereditati da Sel
+### Methods inherited from Sel
 
-Tutti i metodi di `Sel` sono disponibili e funzionano normalmente (senza accesso al dato).
+All `Sel` methods are available and work normally (without datum access).
 
 ```java
-.attr("processed", "true")    // imposta su tutti i nodi, senza dato
-.text("fixed")                 // idem
+.attr("processed", "true")    // sets on all nodes, without datum
+.text("fixed")                 // same
 ```
 
-### Operazioni con accesso al dato
+### Operations with datum access
 
 #### `.attrWith(String name, BiFunction<String, T, String> fn) → JoinedSel<T>`
 
-Imposta l'attributo usando una funzione che riceve il valore corrente dell'attributo e il dato associato.
+Sets the attribute using a function that receives the current attribute value and the associated datum.
 
 ```java
 .attrWith("name", (current, person) -> person.getFullName())
@@ -645,7 +645,7 @@ Imposta l'attributo usando una funzione che riceve il valore corrente dell'attri
 
 #### `.textWith(Function<T, String> fn) → JoinedSel<T>`
 
-Imposta il contenuto testuale usando una funzione che riceve il dato associato.
+Sets the text content using a function that receives the associated datum.
 
 ```java
 .textWith(person -> person.getBio())
@@ -653,7 +653,7 @@ Imposta il contenuto testuale usando una funzione che riceve il dato associato.
 
 #### `.cdataWith(Function<T, String> fn) → JoinedSel<T>`
 
-Imposta il contenuto come CDATA_SECTION_NODE usando una funzione che riceve il dato associato. Simmetrico a `textWith` ma produce un nodo CDATA.
+Sets the content as a CDATA_SECTION_NODE using a function that receives the associated datum. Symmetric with `textWith` but produces a CDATA node.
 
 ```java
 .cdataWith(script -> script.getSource())
@@ -661,7 +661,7 @@ Imposta il contenuto come CDATA_SECTION_NODE usando una funzione che riceve il d
 
 #### `.eachWith(BiConsumer<Node, T> fn) → JoinedSel<T>`
 
-Esegue un'operazione per ogni nodo, con accesso al nodo e al dato.
+Executes an operation for each node, with access to both the node and the datum.
 
 ```java
 .eachWith((node, person) -> {
@@ -670,46 +670,46 @@ Esegue un'operazione per ogni nodo, con accesso al nodo e al dato.
 })
 ```
 
-### Transizioni
+### Transitions
 
 #### `.sel(String xpath) → Sel`
 
-Sotto-selezione. Restituisce `Sel` (non `JoinedSel`): il binding dati viene perso perché il dato è del nodo, non dei suoi discendenti.
+Sub-selection. Returns `Sel` (not `JoinedSel`): the data binding is lost because the datum belongs to the node, not to its descendants.
 
 #### `.toSel() → Sel`
 
-Abbandona esplicitamente il binding e restituisce un `Sel` normale con gli stessi nodi.
+Explicitly drops the binding and returns a plain `Sel` with the same nodes.
 
-### Ordinamento
+### Ordering
 
 #### `.order() → JoinedSel<T>`
 
-Riordina i nodi nel DOM in modo che il loro ordine corrisponda all'ordine dei dati.
+Reorders the nodes in the DOM so that their order matches the data order.
 
 ---
 
 ## OutputOptions
 
-Opzioni di serializzazione per `XML.writeTo()`.
+Serialization options for `XML.writeTo()`.
 
 ### `OutputOptions.builder() → Builder` (static)
 
 #### `.indent(boolean) → Builder`
 
-Abilita l'indentazione. Default: `false`.
+Enables indentation. Default: `false`.
 
 #### `.indentAmount(int) → Builder`
 
-Numero di spazi per livello di indentazione. Default: `2`.
+Number of spaces per indentation level. Default: `2`.
 
 #### `.omitDeclaration(boolean) → Builder`
 
-Se `true`, omette la dichiarazione XML. Default: `false`.
+If `true`, omits the XML declaration. Default: `false`.
 
 #### `.encoding(String) → Builder`
 
-Encoding del documento. Default: `"UTF-8"`.
+Document encoding. Default: `"UTF-8"`.
 
 #### `.build() → OutputOptions`
 
-Costruisce le opzioni.
+Builds the options.
