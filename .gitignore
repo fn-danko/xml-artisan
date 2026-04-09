@@ -39,3 +39,4 @@ bin/
 .DS_Store
 
 .direnv/
+.jqwik-database
