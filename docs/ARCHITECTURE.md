@@ -98,6 +98,7 @@ XML
  ├── XML.from(Path) → XML                          // parse from file
  ├── XML.parse(String) → XML                       // parse from string
  ├── XML.create(String rootTag) → XML               // empty document with root
+ ├── XML.wrap(Document) → XML                       // wrap existing DOM Document
  │
  ├── // Point read and write
  ├── .get(xpath) → String                           // "" if not found

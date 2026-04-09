@@ -109,6 +109,13 @@ public class XML {
         }
     }
 
+    public static XML wrap(Document document) {
+        if (document == null) {
+            throw new IllegalArgumentException("Document must not be null");
+        }
+        return new XML(document);
+    }
+
     // --- Lettura e scrittura puntuale ---
 
     public String get(String xpathExpr) {

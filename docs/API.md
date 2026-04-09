@@ -53,6 +53,17 @@ XML xml = XML.create("catalog");
 // Produces: <catalog/>
 ```
 
+#### `XML.wrap(Document document) → XML`
+
+Wraps an existing `org.w3c.dom.Document` without parsing or normalization. Useful for integrating with code that constructs or obtains a DOM `Document` externally (e.g., from another library, a JAXP pipeline, or programmatic DOM construction).
+
+```java
+Document doc = ... // externally obtained
+XML xml = XML.wrap(doc);
+```
+
+**Exceptions:** `IllegalArgumentException` if the document is `null`.
+
 ### Point read and write
 
 #### `.get(String xpath) → String`

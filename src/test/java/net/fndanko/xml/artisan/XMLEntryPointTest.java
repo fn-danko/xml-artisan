@@ -4,11 +4,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.w3c.dom.Document;
 
 class XMLEntryPointTest {
 
@@ -53,6 +58,47 @@ class XMLEntryPointTest {
         // Assert
         assertNotNull(xml);
         assertTrue(xml.toString().contains("<root"));
+    }
+
+    // --- wrap ---
+
+    @Test
+    void wrap_existingDocument_preservesContent() throws Exception {
+        // Arrange
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document doc = builder.parse(new java.io.ByteArrayInputStream(
+                "<root><child>hello</child></root>".getBytes(StandardCharsets.UTF_8)));
+
+        // Act
+        XML xml = XML.wrap(doc);
+
+        // Assert
+        assertNotNull(xml);
+        assertEquals("hello", xml.get("//child/text()"));
+    }
+
+    @Test
+    void wrap_existingDocument_selectionsWork() throws Exception {
+        // Arrange
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(true);
+        DocumentBuilder db = dbf.newDocumentBuilder();
+        Document doc = db.parse(new java.io.ByteArrayInputStream(
+                "<root><item id=\"1\"/><item id=\"2\"/></root>".getBytes(StandardCharsets.UTF_8)));
+
+        // Act
+        XML xml = XML.wrap(doc);
+
+        // Assert
+        assertEquals(2, xml.sel("//item").size());
+        assertEquals("1", xml.sel("//item").first().attr("id"));
+    }
+
+    @Test
+    void wrap_nullDocument_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class, () -> XML.wrap(null));
     }
 
     // --- get attribute ---
