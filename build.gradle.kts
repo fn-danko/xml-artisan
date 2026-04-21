@@ -1,10 +1,10 @@
 plugins {
     id("java")
     id("java-library")
-    id("maven-publish")
+    id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
-group = "net.fndanko"
+group = "net.fn-danko"
 version = "1.6.0"
 
 base {
@@ -12,18 +12,13 @@ base {
 }
 
 java {
-    withJavadocJar()
-    withSourcesJar()
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
 }
 
 repositories {
     mavenCentral()
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
 }
 
 dependencies {
@@ -35,7 +30,12 @@ dependencies {
 }
 
 tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
     options.compilerArgs.add("-parameters")
+}
+
+tasks.withType<Javadoc>().configureEach {
+    options.encoding = "UTF-8"
 }
 
 tasks.test {
@@ -65,20 +65,36 @@ tasks.register("checkReadmeVersion") {
 
 tasks.named("check") { dependsOn("checkReadmeVersion") }
 
-publishing {
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/fn-danko/xml-artisan")
-            credentials {
-                username = System.getenv("GITHUB_ACTOR")
-                password = System.getenv("GITHUB_TOKEN")
+mavenPublishing {
+    publishToMavenCentral(automaticRelease = false)
+    signAllPublications()
+
+    coordinates(group.toString(), "xml-artisan", version.toString())
+
+    pom {
+        name.set("XML Artisan")
+        description.set("Fluent XML document manipulation in Java, with selections inspired by D3.js.")
+        url.set("https://github.com/fn-danko/xml-artisan")
+        inceptionYear.set("2025")
+
+        licenses {
+            license {
+                name.set("MIT License")
+                url.set("https://opensource.org/licenses/MIT")
+                distribution.set("repo")
             }
         }
-    }
-    publications {
-        create<MavenPublication>("mavenJava") {
-            from(components["java"])
+        developers {
+            developer {
+                id.set("fn-danko")
+                name.set("Danko")
+                url.set("https://github.com/fn-danko")
+            }
+        }
+        scm {
+            url.set("https://github.com/fn-danko/xml-artisan")
+            connection.set("scm:git:git://github.com/fn-danko/xml-artisan.git")
+            developerConnection.set("scm:git:ssh://git@github.com/fn-danko/xml-artisan.git")
         }
     }
 }
