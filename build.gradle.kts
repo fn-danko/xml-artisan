@@ -66,7 +66,7 @@ tasks.register("checkReadmeVersion") {
 tasks.named("check") { dependsOn("checkReadmeVersion") }
 
 mavenPublishing {
-    publishToMavenCentral(automaticRelease = false)
+    publishToMavenCentral(automaticRelease = true)
     signAllPublications()
 
     coordinates(group.toString(), "xml-artisan", version.toString())
