@@ -34,6 +34,16 @@ dependencies {
 </dependency>
 ```
 
+#### Java Module System (JPMS)
+
+The library ships as a named module. To use it from a modular project, add the following to your `module-info.java`:
+
+```java
+requires net.fndanko.xml.artisan;
+```
+
+The module re-exports `java.xml` transitively, so DOM types (`Document`, `Node`) returned by `XML.wrap` and `Node.unwrap` are visible without an extra `requires java.xml`.
+
 ---
 
 ## Quick Start
