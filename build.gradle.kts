@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "net.fn-danko"
-version = "1.6.0"
+version = "1.7.0"
 
 base {
     archivesName.set("xml-artisan")

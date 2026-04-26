@@ -20,7 +20,7 @@ Available on Maven Central.
 
 ```kotlin
 dependencies {
-    implementation("net.fn-danko:xml-artisan:1.6.0")
+    implementation("net.fn-danko:xml-artisan:1.7.0")
 }
 ```
 
@@ -30,7 +30,7 @@ dependencies {
 <dependency>
   <groupId>net.fn-danko</groupId>
   <artifactId>xml-artisan</artifactId>
-  <version>1.6.0</version>
+  <version>1.7.0</version>
 </dependency>
 ```
 
