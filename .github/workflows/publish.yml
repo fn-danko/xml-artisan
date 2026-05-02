@@ -18,11 +18,8 @@ jobs:
         with:
           nix_path: nixpkgs=channel:nixos-unstable
 
-      - name: Build and test
-        run: nix develop --command ./gradlew build
-
-      - name: Publish to Maven Central
-        run: nix develop --command ./gradlew publishToMavenCentral --no-configuration-cache
+      - name: Build, test and publish
+        run: nix develop --command ./gradlew build publishToMavenCentral --no-configuration-cache
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
